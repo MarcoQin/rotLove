@@ -40,13 +40,5 @@
 			--[[ Ray Casting ]]--
 			--require 'bresenham'
 
-            --[[ Color ]]--
-            --require 'color'
 
-            --[[ Lighting ]]--
-            require 'lighting'
-
-            --[[ Path Finding ]]--
-            --require 'dijkstra'
-            --require 'astar'
-
+require 'lighting'

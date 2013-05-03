@@ -1,7 +1,7 @@
 ROT= require 'vendor/rotLove/rot'
 
 function love.load()
-    f=ROT.Display()--175, 80, .375)
+    f=ROT.Display(350, 120, .275 )
     colorhandler=ROT.Color:new()
     rng=ROT.RNG.Twister:new()
     rng:randomseed()
@@ -26,10 +26,10 @@ function doTheThing()
     for i=1,5 do map:create(mapCallback) end
     -- Uncomment this to run the cellular create as many times as possible
     --while map:create(mapCallback) do end
-    fov=ROT.FOV.Bresenham:new(lightPasses, {topology=4})
+    fov=ROT.FOV.Precise:new(lightPasses, {topology=4})
     lighting=ROT.Lighting(reflectivityCB, {range=12, passes=2})
     lighting:setFOV(fov)
-    for i=1,3 do
+    for i=1,100  do
         local point=getRandomFloor()
         lighting:setLight(tonumber(point[1]),tonumber(point[2]), getRandomColor())
     end
@@ -47,6 +47,11 @@ function doTheThing()
         local finalColor=colorhandler:multiply(baseColor, light)
         f:write(' ', x, y, nil, finalColor)
     end
+    mapData=nil
+    lightData=nil
+    map=nil
+    lighting=nil
+    fov=nil
 end
 
 function lightingCallback(x, y, color)
@@ -55,9 +60,9 @@ function lightingCallback(x, y, color)
 end
 
 function getRandomColor()
-    return { r=math.floor(rng:random(0,255)),
-             g=math.floor(rng:random(0,255)),
-             b=math.floor(rng:random(0,255)),
+    return { r=math.floor(rng:random(0,125)),
+             g=math.floor(rng:random(0,125)),
+             b=math.floor(rng:random(0,125)),
              a=255}
 end
 

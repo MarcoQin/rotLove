@@ -28,7 +28,7 @@ end
 
 function love.load()
 	f=ROT.Display(80,24)
-	s=ROT.Scheduler.Simple:new()
+	s=ROT.Scheduler.SimpleScheduler:new()
 	e=ROT.Engine:new(s)
 	s:add(a1, true)
 	e:start()
