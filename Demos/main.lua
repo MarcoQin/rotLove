@@ -12,7 +12,7 @@
 			--require 'engine'
 
 			-- [[ String Generator ]]--
-			--require 'stringGen'
+		 	--require 'stringGen'
 
 			--[[ Random Number Generator ]]--
 			--require 'rng'   --state get/set
@@ -35,10 +35,10 @@
 
 			-- [[ FOV ]]--
 			-- [[ Shadow Casting ]]-- (WIP)
-			require 'precise'
+			--require 'precise'
 
 			--[[ Ray Casting ]]--
 			--require 'bresenham'
 
 
-			--require 'lighting'
+			require 'lighting'

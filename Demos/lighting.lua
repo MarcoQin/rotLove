@@ -1,7 +1,7 @@
 ROT= require 'vendor/rotLove/rot'
 
 function love.load()
-    f=ROT.Display(350, 120, .275 )
+    f=ROT.Display(80, 24)
     colorhandler=ROT.Color:new()
     rng=ROT.RNG.Twister:new()
     rng:randomseed()
@@ -19,18 +19,20 @@ end
 function love.keypressed() update=true end
 
 function doTheThing()
+	f:clear()
     mapData={}
     lightData={}
     map= ROT.Map.Cellular:new(f:getWidth(), f:getHeight())
     map:randomize(.5)
     for i=1,5 do map:create(mapCallback) end
     -- Uncomment this to run the cellular create as many times as possible
-    --while map:create(mapCallback) do end
+    while map:create(mapCallback) do end
     fov=ROT.FOV.Precise:new(lightPasses, {topology=4})
     lighting=ROT.Lighting(reflectivityCB, {range=12, passes=2})
     lighting:setFOV(fov)
-    for i=1,100  do
+    for i=1,5  do
         local point=getRandomFloor()
+        f:write('*',tonumber(point[1]),tonumber(point[2]))
         lighting:setLight(tonumber(point[1]),tonumber(point[2]), getRandomColor())
     end
     lighting:compute(lightingCallback)
@@ -45,7 +47,8 @@ function doTheThing()
             light=colorhandler:add(light, lightData[k])
         end
         local finalColor=colorhandler:multiply(baseColor, light)
-        f:write(' ', x, y, nil, finalColor)
+        local char=f:getCharacter(x, y)
+        f:write(char and char or ' ', x, y, nil, finalColor)
     end
     mapData=nil
     lightData=nil

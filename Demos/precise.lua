@@ -47,7 +47,7 @@ function doTheThing()
     uni:create(calbak)
     fov=ROT.FOV.Precise:new(lightCalbak)
     placePlayer()
-    fov:compute(player.x, player.y, 2, computeCalbak)
+    fov:compute(player.x, player.y, 10, computeCalbak)
 end
 local update=false
 function love.update()
