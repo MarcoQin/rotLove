@@ -35,10 +35,10 @@
 
 			-- [[ FOV ]]--
 			-- [[ Shadow Casting ]]-- (WIP)
-			--require 'precise'
+			require 'precise'
 
 			--[[ Ray Casting ]]--
 			--require 'bresenham'
 
 
-require 'lighting'
+			--require 'lighting'
