@@ -41,4 +41,4 @@
 			--require 'bresenham'
 
 
-			require 'lighting'
+			--require 'lighting'

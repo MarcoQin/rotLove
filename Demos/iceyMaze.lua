@@ -10,7 +10,7 @@ local update=false
 function love.update()
     if update then
         update=false
-        im=ROT.Map.IceyMaze:new(f:getWidth(), f:getHeight(), ROT.RNG.twister:random()*5)
+        im=ROT.Map.IceyMaze:new(f:getWidth(), f:getHeight(), math.random(0,5))
 	    im:create(calbak)
     end
 end
