@@ -34,9 +34,9 @@
 			--require 'simplex'
 
 			-- [[ FOV ]]--
-			-- [[ Shadow Casting ]]-- (WIP)
-			--require 'precise'
-
+			-- [[ Shadow Casting ]]--
+			require 'precise'
+			--require 'preciseWithMovingPlayer'
 			--[[ Ray Casting ]]--
 			--require 'bresenham'
 
