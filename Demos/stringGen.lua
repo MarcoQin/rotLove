@@ -1,5 +1,5 @@
 --[[ String Gen ]]--
-ROT = require 'vendor/rotLove/rot'
+ROT = require 'vendor/rotLove/rotLove'
 function love.load()
 	frame=ROT.Display(80, 24)
 	sg = ROT.StringGenerator()

@@ -1,5 +1,5 @@
 --[[ Simplex Noise ]]--
-ROT=require 'vendor/rotLove/rot'
+ROT=require 'vendor/rotLove/rotLove'
 function generateNoise()
     sim=ROT.Noise.Simplex()
     for j=1,f:getHeight() do

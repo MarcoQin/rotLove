@@ -1,6 +1,6 @@
 --[[ Engine ]]--
-ROT= require 'vendor/rotLove/rot'
-class= require 'vendor/rotLove/vendor/30log'
+ROT= require 'vendor/rotLove/rotLove'
+class= require 'vendor/30log'
 
 a1=class{lives=3}
 

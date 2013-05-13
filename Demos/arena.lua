@@ -1,5 +1,5 @@
 --[[ Arena ]]--
-ROT=require 'vendor/rotLove/rot'
+ROT=require 'vendor/rotLove/rotLove'
 function love.load()
 	f=ROT.Display:new(80,24)
 	m=ROT.Map.Arena:new(f:getWidth(), f:getHeight())

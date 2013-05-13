@@ -1,4 +1,4 @@
-ROT=require 'vendor/rotLove/rot'
+ROT=require 'vendor/rotLove/rotLove'
 function love.load()
 	f =ROT.Display(211, 75, .375)
 	em=ROT.Map.EllerMaze:new(f:getWidth(), f:getHeight())

@@ -1,6 +1,6 @@
 --[[ SpeedScheduler ]]--
-ROT= require 'vendor/rotLove/rot'
-class= require 'vendor/rotLove/vendor/30log'
+ROT= require 'vendor/rotLove/rotLove'
+class= require 'vendor/30log'
 
 actor=class { speed, number }
 function actor:__init(speed, number)

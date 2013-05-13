@@ -1,5 +1,5 @@
 --[[ Display, RNG ]]--
-	ROT = require 'vendor/rotLove/rot'
+	ROT = require 'vendor/rotLove/rotLove'
 	function love.load()
         -- Display(widthInCharacters, heightInCharacters, characterScale
         --         defaultForegroundColor, defaultBackgroundColor,

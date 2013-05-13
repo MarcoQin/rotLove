@@ -1,5 +1,5 @@
 --[[ ActionScheduler ]]--
-ROT= require 'vendor/rotLove/rot'
+ROT= require 'vendor/rotLove/rotLove'
 class= require 'vendor/rotLove/vendor/30log'
 
 function love.load()

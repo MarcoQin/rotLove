@@ -35,10 +35,17 @@
 
 			-- [[ FOV ]]--
 			-- [[ Shadow Casting ]]--
-			require 'precise'
+			--require 'precise'
 			--require 'preciseWithMovingPlayer'
 			--[[ Ray Casting ]]--
 			--require 'bresenham'
 
 
 			--require 'lighting'
+
+local start=os.clock()
+require 'vendor/rotLove/rotLove'
+write(os.clock()-start)
+local start=os.clock()
+require 'vendor/rotLove/rotLove_min'
+write(os.clock()-start)

@@ -1,5 +1,5 @@
 --[[ Divided Maze ]]
-ROT=require 'vendor/rotLove/rot'
+ROT=require 'vendor/rotLove/rotLove'
 function love.load()
 	f =ROT.Display(80,24)
 	dm=ROT.Map.DividedMaze:new(f:getWidth(), f:getHeight())
