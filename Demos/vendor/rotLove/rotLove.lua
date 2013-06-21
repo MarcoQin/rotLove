@@ -4429,8 +4429,8 @@ ROT.DijkstraMap=class {  }
 function ROT.DijkstraMap:__init(goalX, goalY, mapWidth, mapHeight, passableCallback)
     self._map={}
     self._goal={}
-    self._goal.x=x
-    self._goal.y=y
+    self._goal.x=goalX
+    self._goal.y=goalY
 
     self._dimensions={}
     self._dimensions.w=mapWidth

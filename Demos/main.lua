@@ -40,12 +40,8 @@
 			--[[ Ray Casting ]]--
 			--require 'bresenham'
 
+            --[[ Path ]]--
+            require 'dijkstraMap'
 
+            --[[ Color ]]--
 			--require 'lighting'
-
-local start=os.clock()
-require 'vendor/rotLove/rotLove'
-write(os.clock()-start)
-local start=os.clock()
-require 'vendor/rotLove/rotLove_min'
-write(os.clock()-start)
