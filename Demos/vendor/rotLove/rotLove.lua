@@ -1654,7 +1654,7 @@ ROT.Map.IceyMaze = ROT.Map:extends { _regularity, _rng }
 -- @tparam int[opt=0] regularity A value used to determine the 'randomness' of the map, 0= more random
 function ROT.Map.IceyMaze:__init(width, height, regularity)
     assert(ROT or twister, 'require rot or require RandomLua, IceyMaze requires twister() be available')
-    IceyMaze.super.__init(self, width, height)
+    ROT.Map.IceyMaze.super.__init(self, width, height)
     self.__name     ='IceyMaze'
     self._regularity= regularity and regularity or 0
     self._rng       =ROT.RNG.Twister:new()
@@ -4535,9 +4535,11 @@ function ROT.DijkstraMap:dirTowardsGoal(x, y)
     local low=math.huge
     local key=nil
     local dir=nil
+    local low=self._map[x][y]
+    if low==0 then return nil end
     for k,v in pairs(ROT.DIRS.EIGHT) do
-        local tx=(i+v[1])
-        local ty=(j+v[2])
+        local tx=(x+v[1])
+        local ty=(y+v[2])
         if tx>0 and tx<=self._dimensions.w and ty>0 and ty<=self._dimensions.h then
             local val=self._map[tx][ty]
             if val<low then
@@ -4546,8 +4548,7 @@ function ROT.DijkstraMap:dirTowardsGoal(x, y)
             end
         end
     end
-    if val==0 then return nil end
-    return dir[1],dir[2]
+    return dir
 end
 
 --- Run a callback function on every cell in the map
