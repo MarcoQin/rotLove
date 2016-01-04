@@ -70,7 +70,7 @@ end
 -- randomly reorders the elements of the provided table and returns the result
 function table.randomize(theTable)
     isATable(theTable)
-    result={}
+    local result={}
     while #theTable>0 do
         table.insert(result, table.remove(theTable, table.randomi(theTable)))
     end
@@ -104,6 +104,22 @@ function table.indexOf(values,value)
         for i=1,#values do
             if values[i] == value then return i end
         end
+        if type(value)=='table' then return table.indexOfTable(values, value) end
+    end
+    return 0
+end
+
+-- extended for use with tables of tables
+function table.indexOfTable(values, value)
+    if type(value)~='table' then return 0 end
+    for k,v in ipairs(values) do
+        if #v==#value then
+            local match=true
+            for i=1,#v do
+                if v[i]~=value[i] then match=false end
+            end
+            if match then return k end
+        end
     end
     return 0
 end
@@ -121,8 +137,8 @@ end
 -- returns string of length n consisting of only char c
 function charNTimes(c, n)
     assert(#c==1, 'character must be a string of length 1')
-    s=''
-    for i=1,n and n or 2 do
+    local s=''
+    for _=1,n and n or 2 do
         s=s..c
     end
     return s
@@ -139,9 +155,8 @@ end
 function string:rpad(c, n)
     c=c and c or '0'
     n=n and n or 2
-    local s=''
-    while #s < n-#self do s=s..c end
-    return self..s
+    while #self < n do self=self..c end
+    return self
 end
 -- add js split function
 function string:split(delim, maxNb)
@@ -202,7 +217,6 @@ end
 
 function ROT.RNG:bit_and(a, b)
     local r = 0
-    local m = 0
     for m = 0, 31 do
         if (a % 2 == 1) and (b % 2 == 1) then r = r + 2^m end
         if a % 2 ~= 0 then a = a - 1 end
@@ -214,7 +228,6 @@ end
 
 function ROT.RNG:bit_or(a, b)
     local r = 0
-    local m = 0
     for m = 0, 31 do
         if (a % 2 == 1) or (b % 2 == 1) then r = r + 2^m end
         if a % 2 ~= 0 then a = a - 1 end
@@ -226,7 +239,6 @@ end
 
 function ROT.RNG:bit_xor(a, b)
     local r = 0
-    local m = 0
     for m = 0, 31 do
         if a % 2 ~= b % 2 then r = r + 2^m end
         if a % 2 ~= 0 then a = a - 1 end
@@ -235,6 +247,25 @@ function ROT.RNG:bit_xor(a, b)
     end
     return self:normalize(r)
 end
+
+function ROT.RNG:random(a,b)
+    return math.random(a,b)
+end
+
+function ROT.RNG:getWeightedValue(tbl)
+    local total=0
+    for _,v in pairs(tbl) do
+        total=total+v
+    end
+    local rand=self:random()*total
+    local part=0
+    for k,v in pairs(tbl) do
+        part=part+v
+        if rand<part then return k end
+    end
+    return nil
+end
+
 
 --- Seed.
 -- get the host system's time in milliseconds as a positive 32 bit number
@@ -246,7 +277,7 @@ end
 
 --- Mersenne Twister. A random number generator based on RandomLua
 -- @module ROT.RNG.Twister
-ROT.RNG.Twister=ROT.RNG:extends { __name, mt, index, _seed }
+ROT.RNG.Twister=ROT.RNG:extends { }
 
 function ROT.RNG.Twister:__init()
     self.__name='Twister'
@@ -324,7 +355,7 @@ end
 
 --- Linear Congruential Generator. A random number generator based on RandomLua
 -- @module ROT.RNG.LCG
-ROT.RNG.LCG=ROT.RNG:extends { __name, mt, index, a, c, m, x, _seed }
+ROT.RNG.LCG=ROT.RNG:extends { }
 
 --- Constructor.
 -- Called with ROT.RNG.LCG:new(r)
@@ -392,7 +423,7 @@ end
 
 --- Multiply With Carry. A random number generator based on RandomLua
 -- @module ROT.RNG.MWC
-ROT.RNG.MWC=ROT.RNG:extends { __name, mt, index, a, c, ic, m, x, _seed }
+ROT.RNG.MWC=ROT.RNG:extends {  }
 
 --- Constructor.
 -- Called with ROT.RNG.MWC:new(r)
@@ -473,50 +504,24 @@ end
 -- A Code Page 437 terminal emulator based on AsciiPanel.
 -- @module ROT.Display
 local Display_Path = ({...})[1]:gsub("[%.\\/]rotLove$", "") .. '/'
-ROT.Display = class {
-    __name,
-    color,
-    widthInChars,
-    heightInChars,
-    charWidth,
-    charHeight,
-    defaultBackgroundColor,
-    defaultForegroundColor,
-    full,
-    vsync,
-    fsaa,
-    glyphSprite,
-    glyphs,
-    chars,
-    backgroundColors,
-    foregroundColors,
-    oldChars,
-    oldBackgroundColors,
-    oldForegroundColors,
-    canvas
-}
+ROT.Display = class { }
 
 --- Constructor.
 -- The display constructor. Called when ROT.Display:new() is called.
 -- @tparam[opt=80] int w Width of display in number of characters
--- @tparam[opt=24] int h Height of display in number of characters
--- @tparam[opt=1] float scale Scale factor applied to characters
+-- @tparam[opt=24] int h Height of display in number of character
 -- @tparam[opt] table dfg Default foreground color as a table defined as {r,g,b,a}
 -- @tparam[opt] table dbg Default background color
--- @tparam[opt=false] boolean full Use fullscreen
+-- @tparam[opt=false] boolean fullOrFlags In Love 0.8.0: Use fullscreen In Love 0.9.0: a table defined for love.graphics.setMode
 -- @tparam[opt=false] boolean vsync Use vsync
 -- @tparam[opt=0] int fsaa Number of fsaa passes
 -- @return nil
-function ROT.Display:__init(w, h, scale, dfg, dbg, full, vsync, fsaa)
+function ROT.Display:__init(w, h, dfg, dbg, fullOrFlags, vsync, fsaa)
     self.__name='Display'
     self.widthInChars = w and w or 80
     self.heightInChars= h and h or 24
-    self.full         = full and full or false
-    self.vsync        = vsync and vsync or false
-    self.fsaa         = fsaa and fsaa or 0
-    self.scale=scale and scale or 1
-    self.charWidth=self.scale*9
-    self.charHeight=self.scale*16
+    self.charWidth=9
+    self.charHeight=16
     self.glyphs={}
     self.chars={{}}
     self.backgroundColors={{}}
@@ -524,23 +529,32 @@ function ROT.Display:__init(w, h, scale, dfg, dbg, full, vsync, fsaa)
     self.oldChars={{}}
     self.oldBackgroundColors={{}}
     self.oldForegroundColors={{}}
-    love.graphics.setMode(self.charWidth*self.widthInChars, self.charHeight*self.heightInChars, self.full, self.vsync, self.fsaa)
+    self.graphics=love.graphics
+    if love._version>'0.8.0' then
+        love.window.setMode(self.charWidth*self.widthInChars, self.charHeight*self.heightInChars, fullOrFlags)
+        self.drawQ=self.graphics.draw
+    else
+        print('<=080')
+        self.graphics.setMode(self.charWidth*self.widthInChars, self.charHeight*self.heightInChars, fullOrFlags, vsync, fsaa)
+        self.drawQ=self.graphics.drawq
+    end
+
 
     self.defaultForegroundColor=dfg and dfg or {r=235,g=235,b=235,a=255}
-    self.defaultBackgroundColor=dbg and dgb or {r=15,g=15,b=15,a=255}
+    self.defaultBackgroundColor=dbg and dbg or {r=15,g=15,b=15,a=255}
 
-    love.graphics.setBackgroundColor(self.defaultBackgroundColor.r,
+    self.graphics.setBackgroundColor(self.defaultBackgroundColor.r,
                                      self.defaultBackgroundColor.g,
                                      self.defaultBackgroundColor.b,
                                      self.defaultBackgroundColor.a)
 
-    self.canvas=love.graphics.newCanvas(self.charWidth*self.widthInChars, self.charHeight*self.heightInChars)
+    self.canvas=self.graphics.newCanvas(self.charWidth*self.widthInChars, self.charHeight*self.heightInChars)
 
-    self.glyphSprite=love.graphics.newImage(Display_Path .. 'img/cp437.png')
+    self.glyphSprite=self.graphics.newImage(Display_Path .. 'img/cp437.png')
     for i=0,255 do
-        sx=(i%32)*9
-        sy=math.floor(i/32)*16
-        self.glyphs[i]=love.graphics.newQuad(sx, sy, 9, 16, self.glyphSprite:getWidth(), self.glyphSprite:getHeight())
+        local sx=(i%32)*9
+        local sy=math.floor(i/32)*16
+        self.glyphs[i]=self.graphics.newQuad(sx, sy, 9, 16, self.glyphSprite:getWidth(), self.glyphSprite:getHeight())
     end
 
     for i=1,self.widthInChars do
@@ -564,7 +578,7 @@ end
 --- Draw.
 -- The main draw function. This should be called from love.draw() to display any written characters to screen
 function ROT.Display:draw()
-    love.graphics.setCanvas(self.canvas)
+    self.graphics.setCanvas(self.canvas)
     for x=1,self.widthInChars do
         for y=1,self.heightInChars do
             local c =self.chars[x][y]
@@ -577,11 +591,11 @@ function ROT.Display:draw()
                self.oldForegroundColors[x][y] ~= fg then
 
                 self:_setColor(bg)
-                love.graphics.rectangle('fill', px, py, self.charWidth, self.charHeight)
+                self.graphics.rectangle('fill', px, py, self.charWidth, self.charHeight)
                 if c~=32 and c~=255 then
                     local qd=self.glyphs[c]
                     self:_setColor(fg)
-                    love.graphics.drawq(self.glyphSprite, qd, px, py, nil, self.scale)
+                    self.drawQ(self.glyphSprite, qd, px, py)
                 end
 
                 self.oldChars[x][y]            = c
@@ -590,9 +604,15 @@ function ROT.Display:draw()
             end
         end
     end
-    love.graphics.setCanvas()
-    love.graphics.setColor(255,255,255,255)
-    love.graphics.draw(self.canvas)
+    self.graphics.setCanvas()
+    self.graphics.setColor(255,255,255,255)
+    self.graphics.draw(self.canvas)
+end
+
+--- Contains point.
+-- Returns true if point x,y can be drawn to display.
+function ROT.Display:contains(x, y)
+    return x>0 and x<=self:getWidth() and y>0 and y<=self:getHeight()
 end
 
 function ROT.Display:getCharHeight() return self.charHeight end
@@ -654,7 +674,7 @@ function ROT.Display:clear(c, x, y, w, h, fg, bg)
     c =c and c or ' '
     w =w and w or self.widthInChars
     local s=''
-    for i=1,w do
+    for _=1,w do
         s=s..c
     end
     x =self:_validateX(x, s)
@@ -662,7 +682,7 @@ function ROT.Display:clear(c, x, y, w, h, fg, bg)
     h =self:_validateHeight(y, h)
     fg=self:_validateForegroundColor(fg)
     bg=self:_validateBackgroundColor(bg)
-    for i=0,h do
+    for i=0,h-1 do
         self:_writeValidatedString(s, x, y+i, fg, bg)
     end
 end
@@ -757,7 +777,7 @@ end
 --- Visual Display.
 -- A UTF-8 based text display.
 -- @module ROT.TextDisplay
-ROT.TextDisplay=class { _font, _fontSize, _charWidth, _charHeight, _widthInChars, _heightInChars, _full, _vsync, _fsaa, _defaultForegroundColor, _defaultBackgroundColor, _chars, _backgroundColors, _foregroundColors, _oldChars, _oldBackgroundColors, _oldForegroundColors }
+ROT.TextDisplay=class { }
 
 --- Constructor.
 -- The display constructor. Called when ROT.TextDisplay:new() is called.
@@ -767,37 +787,35 @@ ROT.TextDisplay=class { _font, _fontSize, _charWidth, _charHeight, _widthInChars
 -- @tparam[opt=10] int size font size
 -- @tparam[opt] table dfg Default foreground color as a table defined as {r,g,b,a}
 -- @tparam[opt] table dbg Default background color
--- @tparam[opt=false] boolean full Use fullscreen
+-- @tparam[opt=false] boolean fullOrFlags In Love 0.8.0: Use fullscreen In Love 0.9.0: a table defined for love.graphics.setMode
 -- @tparam[opt=false] boolean vsync Use vsync
 -- @tparam[opt=0] int fsaa Number of fsaa passes
 -- @return nil
-function ROT.TextDisplay:__init(w, h, font, size, dfg, dbg, full, vsync, fsaa)
-    self._font    =love.graphics.newFont(font)
+function ROT.TextDisplay:__init(w, h, font, size, dfg, dbg, fullOrFlags, vsync, fsaa)
+    self.graphics =love.graphics
+    self._font    =self.graphics.newFont(font)
     self._fontSize=size and size or 10
-    if self._font then love.graphics.setFont(self._font, self._fontSize)
+    if self._font then self.graphics.setFont(self._font, self._fontSize)
     else
-        love.graphics.setFont(self._fontSize)
-        self._font=love.graphics.getFont()
+        self.graphics.setFont(self._fontSize)
+        self._font=self.graphics.getFont()
     end
     self._charWidth    =self._font:getWidth(' ')
     self._charHeight   =self._font:getHeight()
     self._widthInChars =w and w or 80
     self._heightInChars=h and h or 24
-    self._full         = full and full or false
-    self._vsync        = vsync and vsync or false
-    self._fsaa         = fsaa and fsaa or 0
+    local w=love._version > '0.8.0' and love.window or self.graphics
+    w.setMode(self._charWidth*self._widthInChars, self._charHeight*self._heightInChars, fullOrFlags, vsync, fsaa)
 
-    love.graphics.setMode(self._charWidth*self._widthInChars, self._charHeight*self._heightInChars, self._full, self._vsync, self._fsaa)
+    self.defaultForegroundColor=dfg and dfg or {r=235,g=235,b=235,a=255}
+    self.defaultBackgroundColor=dbg and dbg or {r=15,g=15,b=15,a=255}
 
-    self._defaultForegroundColor=dfg and dfg or {r=235,g=235,b=235,a=255}
-    self._defaultBackgroundColor=dbg and dgb or {r=15,g=15,b=15,a=255}
+    self.graphics.setBackgroundColor(self.defaultBackgroundColor.r,
+                                     self.defaultBackgroundColor.g,
+                                     self.defaultBackgroundColor.b,
+                                     self.defaultBackgroundColor.a)
 
-    love.graphics.setBackgroundColor(self._defaultBackgroundColor.r,
-                                     self._defaultBackgroundColor.g,
-                                     self._defaultBackgroundColor.b,
-                                     self._defaultBackgroundColor.a)
-
-    self._canvas=love.graphics.newCanvas(self._charWidth*self._widthInChars, self._charHeight*self._heightInChars)
+    self._canvas=self.graphics.newCanvas(self._charWidth*self._widthInChars, self._charHeight*self._heightInChars)
 
     self._chars              ={}
     self._backgroundColors   ={}
@@ -806,26 +824,26 @@ function ROT.TextDisplay:__init(w, h, font, size, dfg, dbg, full, vsync, fsaa)
     self._oldBackgroundColors={}
     self._oldForegroundColors={}
 
-    for i=1,self._widthInChars do
-        self._chars[i]               = {}
-        self._backgroundColors[i]    = {}
-        self._foregroundColors[i]    = {}
-        self._oldChars[i]            = {}
-        self._oldBackgroundColors[i] = {}
-        self._oldForegroundColors[i] = {}
-        for j=1,self._heightInChars do
-            self._chars[i][j]               = ' '
-            self._backgroundColors[i][j]    = self._defaultBackgroundColor
-            self._foregroundColors[i][j]    = self._defaultForegroundColor
-            self._oldChars[i][j]            = nil
-            self._oldBackgroundColors[i][j] = nil
-            self._oldForegroundColors[i][j] = nil
+    for x=1,self._widthInChars do
+        self._chars[x]               = {}
+        self._backgroundColors[x]    = {}
+        self._foregroundColors[x]    = {}
+        self._oldChars[x]            = {}
+        self._oldBackgroundColors[x] = {}
+        self._oldForegroundColors[x] = {}
+        for y=1,self._heightInChars do
+            self._chars[x][y]               = ' '
+            self._backgroundColors[x][y]    = self.defaultBackgroundColor
+            self._foregroundColors[x][y]    = self.defaultForegroundColor
+            self._oldChars[x][y]            = nil
+            self._oldBackgroundColors[x][y] = nil
+            self._oldForegroundColors[x][y] = nil
         end
     end
 end
 
 function ROT.TextDisplay:draw()
-    love.graphics.setCanvas(self._canvas)
+    self.graphics.setCanvas(self._canvas)
     for x=1,self._widthInChars do for y=1,self._heightInChars do
         local c =self._chars[x][y]
         local bg=self._backgroundColors[x][y]
@@ -837,17 +855,23 @@ function ROT.TextDisplay:draw()
            self._oldForegroundColors[x][y] ~= fg then
 
             self:_setColor(bg)
-            love.graphics.rectangle('fill', px, py, self._charWidth, self._charHeight)
+            self.graphics.rectangle('fill', px, py, self._charWidth, self._charHeight)
             self:_setColor(fg)
-            love.graphics.print(c, px, py)
+            self.graphics.print(c, px, py)
             self._oldChars[x][y]            = c
             self._oldBackgroundColors[x][y] = bg
             self._oldForegroundColors[x][y] = fg
         end
     end end
-    love.graphics.setCanvas()
-    love.graphics.setColor(255,255,255,255)
-    love.graphics.draw(self._canvas)
+    self.graphics.setCanvas()
+    self.graphics.setColor(255,255,255,255)
+    self.graphics.draw(self._canvas)
+end
+
+--- Contains point.
+-- Returns true if point x,y can be drawn to display.
+function ROT.TextDisplay:contains(x, y)
+    return x>0 and x<=self:getWidth() and y>0 and y<=self:getHeight()
 end
 
 function ROT.TextDisplay:getCharHeight() return self._charHeight end
@@ -856,8 +880,8 @@ function ROT.TextDisplay:getWidth() return self:getWidthInChars() end
 function ROT.TextDisplay:getHeight() return self:getHeightInChars() end
 function ROT.TextDisplay:getHeightInChars() return self._heightInChars end
 function ROT.TextDisplay:getWidthInChars() return self._widthInChars end
-function ROT.TextDisplay:getDefaultBackgroundColor() return self._defaultBackgroundColor end
-function ROT.TextDisplay:getDefaultForegroundColor() return self._defaultForegroundColor end
+function ROT.TextDisplay:getDefaultBackgroundColor() return self.defaultBackgroundColor end
+function ROT.TextDisplay:getDefaultForegroundColor() return self.defaultForegroundColor end
 
 --- Get a character.
 -- returns the character being displayed at position x, y
@@ -884,14 +908,14 @@ function ROT.TextDisplay:getForegroundColor(x, y) return self._foregroundColors[
 -- Sets the background color to be used when it is not provided
 -- @tparam table c The background color as a table defined as {r,g,b,a}
 function ROT.TextDisplay:setDefaultBackgroundColor(c)
-    self._defaultBackgroundColor=c and c or self._defaultBackgroundColor
+    self.defaultBackgroundColor=c and c or self.defaultBackgroundColor
 end
 
 --- Set Defaul Foreground Color.
 -- Sets the foreground color to be used when it is not provided
 -- @tparam table c The foreground color as a table defined as {r,g,b,a}
 function ROT.TextDisplay:setDefaultForegroundColor(c)
-    self._defaultForegroundColor=c and c or self._defaultForegroundColor
+    self.defaultForegroundColor=c and c or self.defaultForegroundColor
 end
 
 --- Clear the screen.
@@ -909,7 +933,7 @@ function ROT.TextDisplay:clear(c, x, y, w, h, fg, bg)
     c =c and c or ' '
     w =w and w or self._widthInChars
     local s=''
-    for i=1,w do
+    for _=1,w do
         s=s..c
     end
     x =self:_validateX(x, s)
@@ -917,7 +941,7 @@ function ROT.TextDisplay:clear(c, x, y, w, h, fg, bg)
     h =self:_validateHeight(y, h)
     fg=self:_validateForegroundColor(fg)
     bg=self:_validateBackgroundColor(bg)
-    for i=0,h do
+    for i=0,h-1 do
         self:_writeValidatedString(s, x, y+i, fg, bg)
     end
 end
@@ -967,7 +991,9 @@ function ROT.TextDisplay:_writeValidatedString(s, x, y, fg, bg)
     for i=1,#s do
         self._backgroundColors[x+i-1][y] = bg
         self._foregroundColors[x+i-1][y] = fg
-        self._chars[x+i-1][y]            = s:sub(i, i)
+        local c=s:sub(i,i)
+        --if self._font:getWidth(c)~=self._charWidth then write('HELP') end
+        self._chars[x+i-1][y]            = c
     end
 end
 
@@ -984,13 +1010,13 @@ function ROT.TextDisplay:_validateY(y)
     return y
 end
 function ROT.TextDisplay:_validateForegroundColor(c)
-    c = c and c or self._defaultForegroundColor
+    c = c and c or self.defaultForegroundColor
     for k,_ in pairs(c) do c[k]=self:_clamp(c[k]) end
     assert(c.a and c.r and c.g and c.b, 'Foreground Color must be of type { r = int, g = int, b = int, a = int }')
     return c
 end
 function ROT.TextDisplay:_validateBackgroundColor(c)
-    c = c and c or self._defaultBackgroundColor
+    c = c and c or self.defaultBackgroundColor
     for k,_ in pairs(c) do c[k]=self:_clamp(c[k]) end
     assert(c.a and c.r and c.g and c.b, 'Background Color must be of type { r = int, g = int, b = int, a = int }')
     return c
@@ -1002,7 +1028,7 @@ function ROT.TextDisplay:_validateHeight(y, h)
     return h
 end
 function ROT.TextDisplay:_setColor(c)
-    c = c and c or self._defaultForegroundColor
+    c = c and c or self.defaultForegroundColor
     love.graphics.setColor(c.r, c.g, c.b, c.a)
 end
 function ROT.TextDisplay:_clamp(n)
@@ -1012,7 +1038,7 @@ end
 --- Random String Generator.
 -- Learns from provided strings, and generates similar strings.
 -- @module ROT.StringGenerator
-ROT.StringGenerator = class { __name, _options, _boundary, _suffix, _prefix, _priorValues, _data, _rng }
+ROT.StringGenerator = class { }
 
 --- Constructor.
 -- Called with ROT.StringGenerator:new()
@@ -1020,7 +1046,7 @@ ROT.StringGenerator = class { __name, _options, _boundary, _suffix, _prefix, _pr
     -- @tparam[opt=false] boolean options.words Use word mode
     -- @tparam[opt=3] int options.order Number of letters/words to be used as context
     -- @tparam[opt=0.001] number options.prior A default priority for characters/words
-function ROT.StringGenerator:__init(options)
+function ROT.StringGenerator:__init(options, rng)
     self.__name   ='StringGenerator'
     self._options = {words=false,
                      order=3,
@@ -1033,16 +1059,16 @@ function ROT.StringGenerator:__init(options)
     self._data    ={}
     if options then
         for k,v in pairs(options) do
-            self._options.k=v
+            self._options[k]=v
         end
     end
-    for i=1,self._options.order do
+    for _=1,self._options.order do
         table.insert(self._prefix, self._boundary)
     end
     self._priorValues[self._boundary]=self._options.prior
 
-    self._rng=ROT.RNG.Twister:new()
-    self._rng:randomseed()
+    self._rng=rng and rng or ROT.RNG.Twister:new()
+    if not rng then self._rng:randomseed() end
 end
 
 --- Remove all learned data
@@ -1055,7 +1081,6 @@ end
 -- @treturn string The generated string
 function ROT.StringGenerator:generate()
     local result={self:_sample(self._prefix)}
-    local i=0
     while result[#result] ~= self._boundary do
         table.insert(result, self:_sample(result))
     end
@@ -1072,7 +1097,7 @@ function ROT.StringGenerator:observe(s)
         self._priorValues[tokens[i]] = self._options.prior
     end
     local i=1
-    for k,v in pairs(self._prefix) do
+    for _,v in pairs(self._prefix) do
         table.insert(tokens, i, v)
         i=i+1
     end
@@ -1093,7 +1118,7 @@ end
 function ROT.StringGenerator:getStats()
     local parts={}
     local prC=0
-    for k,_ in pairs(self._priorValues) do
+    for _ in pairs(self._priorValues) do
         prC = prC + 1
     end
     prC=prC-1
@@ -1167,8 +1192,8 @@ function ROT.StringGenerator:_pickRandom(data)
     for k,_ in pairs(data) do
         total=total+data[k]
     end
-    rand=self._rng:random()*total
-    i=0
+    local rand=self._rng:random()*total
+    local i=0
     for k,_ in pairs(data) do
         i=i+data[k]
         if (rand<i) then
@@ -1254,7 +1279,7 @@ end
 
 --- The Scheduler Prototype
 -- @module ROT.Scheduler
-ROT.Scheduler = class {    __name,    _queue,    _repeat,    _current}
+ROT.Scheduler = class { }
 function ROT.Scheduler:__init()
     self.__name  ='Scheduler'
     self._queue=ROT.EventQueue:new()
@@ -1391,7 +1416,7 @@ end
 
 --- Action based turn scheduler.
 -- @module ROT.Scheduler.Action
-ROT.Scheduler.Action= ROT.Scheduler:extends { _defaultDuration, _duration }
+ROT.Scheduler.Action= ROT.Scheduler:extends { }
 
 function ROT.Scheduler.Action:__init()
     ROT.Scheduler.Action.super.__init(self)
@@ -1447,7 +1472,7 @@ function ROT.Scheduler.Action:setDuration(time)
     return self
 end
 
-ROT.Engine = class { _scheduler, _lock }
+ROT.Engine = class { }
 function ROT.Engine:__init(scheduler)
     self.__name='Engine'
     self._scheduler=scheduler
@@ -1473,20 +1498,20 @@ function ROT.Engine:unlock()
     return self
 end
 
-ROT.Map=class { __name, _width, _height}
+ROT.Map=class { }
 function ROT.Map:__init(width, height)
     self.__name= 'Map'
     self._width = width and width or ROT.DEFAULT_WIDTH
     self._height= height and height or ROT.DEFAULT_HEIGHT
 end
 
-function ROT.Map:create(callback) end
+function ROT.Map:create() print("Unimplemented") end
 
 function ROT.Map:_fillMap(value)
     local map={}
     for  i=1,self._width do
         table.insert(map, {})
-        for j=1,self._height do table.insert(map[i], value) end
+        for _=1,self._height do table.insert(map[i], value) end
     end
     return map
 end
@@ -1501,7 +1526,7 @@ ROT.Map.Arena = ROT.Map:extends { }
 -- @tparam int width Width in cells of the map
 -- @tparam int height Height in cells of the map
 function ROT.Map.Arena:__init(width, height)
-    Arena.super.__init(self, width, height)
+    ROT.Map.Arena.super.__init(self, width, height)
     self.__name = 'Arena'
 end
 
@@ -1599,40 +1624,35 @@ function ROT.Map.DividedMaze:_partitionRoom(room)
     self._map[x][y]=1
 
     local walls={}
-
-    local w={}
-    table.insert(walls, w)
+    table.insert(walls, {})
     for i=room[1],x-1,1 do
         self._map[i][y]=1
-        table.insert(w, {i,y})
+        table.insert(walls[#walls], {i,y})
     end
 
-    local w={}
-    table.insert(walls, w)
+    table.insert(walls, {})
     for i=x+1,room[3],1 do
         self._map[i][y]=1
-        table.insert(w,{i,y})
+        table.insert(walls[#walls],{i,y})
     end
 
-    local w={}
-    table.insert(walls, w)
+    table.insert(walls, {})
     for j=room[2],y-1,1 do
         self._map[x][j]=1
-        table.insert(w,{x,j})
+        table.insert(walls[#walls],{x,j})
     end
 
-    local w={}
-    table.insert(walls, w)
+    table.insert(walls, {})
     for j=y+1,room[4] do
         self._map[x][j]=1
-        table.insert(w,{x,j})
+        table.insert(walls[#walls],{x,j})
     end
 
     local solid= table.random(walls)
     for i=1,#walls do
         local w=walls[i]
         if w~=solid then
-            hole=table.random(w)
+            local hole=table.random(w)
             self._map[hole[1]][hole[2]]=0
         end
     end
@@ -1645,20 +1665,20 @@ end
 --- The Icey Maze Map Generator.
 -- See http://www.roguebasin.roguelikedevelopment.org/index.php?title=Simple_maze for explanation
 -- @module ROT.Map.IceyMaze
-ROT.Map.IceyMaze = ROT.Map:extends { _regularity, _rng }
+ROT.Map.IceyMaze = ROT.Map:extends { }
 
 --- Constructor.
 -- Called with ROT.Map.IceyMaze:new(width, height, regularity)
 -- @tparam int width Width in cells of the map
 -- @tparam int height Height in cells of the map
 -- @tparam int[opt=0] regularity A value used to determine the 'randomness' of the map, 0= more random
-function ROT.Map.IceyMaze:__init(width, height, regularity)
-    assert(ROT or twister, 'require rot or require RandomLua, IceyMaze requires twister() be available')
+function ROT.Map.IceyMaze:__init(width, height, rng, regularity)
+    assert(ROT and ROT.RNG.Twister, 'require rot or require RandomLua, IceyMaze requires twister() be available')
     ROT.Map.IceyMaze.super.__init(self, width, height)
     self.__name     ='IceyMaze'
     self._regularity= regularity and regularity or 0
-    self._rng       =ROT.RNG.Twister:new()
-    self._rng:randomseed()
+    self._rng       =rng and rng or ROT.RNG.Twister:new()
+    if not rng then self._rng:randomseed() end
 end
 
 --- Create.
@@ -1757,18 +1777,18 @@ end
 --- The Eller Maze Map Generator.
 -- See http://homepages.cwi.nl/~tromp/maze.html for explanation
 -- @module ROT.Map.EllerMaze
-ROT.Map.EllerMaze = ROT.Map:extends { _rng }
+ROT.Map.EllerMaze = ROT.Map:extends { }
 
 
 --- Constructor.
 -- Called with ROT.Map.EllerMaze:new(width, height)
 -- @tparam int width Width in cells of the map
 -- @tparam int height Height in cells of the map
-function ROT.Map.EllerMaze:__init(width, height)
+function ROT.Map.EllerMaze:__init(width, height, rng)
     ROT.Map.EllerMaze.super.__init(self, width, height)
     self.__name='EllerMaze'
-    self._rng  =ROT.RNG.Twister:new()
-    self._rng:randomseed()
+    self._rng  =rng and rng or ROT.RNG.Twister:new()
+    if not rng then self._rng:randomseed() end
 end
 
 --- Create.
@@ -1847,7 +1867,7 @@ end
 
 --- Cellular Automaton Map Generator
 -- @module ROT.Map.Cellular
-ROT.Map.Cellular = ROT.Map:extends { _rng, _options, _map }
+ROT.Map.Cellular = ROT.Map:extends { }
 
 --- Constructor.
 -- Called with ROT.Map.Cellular:new()
@@ -1857,14 +1877,19 @@ ROT.Map.Cellular = ROT.Map:extends { _rng, _options, _map }
   -- @tparam table options.born List of neighbor counts for a new cell to be born in empty space
   -- @tparam table options.survive List of neighbor counts for an existing  cell to survive
   -- @tparam int options.topology Topology. Accepted values: 4, 8
-function ROT.Map.Cellular:__init(width, height, options)
+  -- @tparam boolean options.connected Set to true to connect open areas on create
+  -- @tparam int options.minimumZoneArea Unconnected zones with fewer tiles than this will be turned to wall instead of being connected
+-- @tparam userdata rng Userdata with a .random(self, min, max) function
+function ROT.Map.Cellular:__init(width, height, options, rng)
     assert(ROT, 'must require rot')
     ROT.Map.Cellular.super.__init(self, width, height)
     self.__name='Cellular'
     self._options={
                     born    ={5,6,7,8},
                     survive ={4,5,6,7,8},
-                    topology=8
+                    topology=8,
+                    connected=false,
+                    minimumZoneArea=8
                   }
     if options then
         for k,v in pairs(options) do
@@ -1875,8 +1900,8 @@ function ROT.Map.Cellular:__init(width, height, options)
     assert(t==8 or t==4, 'topology must be 8 or 4')
     self._dirs = t==8 and ROT.DIRS.EIGHT or t==4 and ROT.DIRS.FOUR
 
-    self._rng = ROT.RNG.Twister:new()
-    self._rng:randomseed()
+    self._rng = rng and rng or ROT.RNG.Twister:new()
+    if not rng then self._rng:randomseed() end
 end
 
 --- Randomize cells.
@@ -1924,11 +1949,22 @@ function ROT.Map.Cellular:create(callback)
             elseif cur<=0 and table.indexOf(born, ncount)>0 then
                 newMap[i][j]=1
             end
-            if callback then callback(i, j, newMap[i][j]) end
             if not changed and newMap[i][j]~=self._map[i][j] then changed=true end
         end
     end
     self._map=newMap
+
+    if self._options.connected then
+        self._completeMaze()
+    end
+
+    if callback then
+        for i=1,self._width do
+            for j=1,self._height do
+                if callback then callback(i, j, newMap[i][j]) end
+            end
+        end
+    end
     return changed
 end
 
@@ -1945,13 +1981,111 @@ function ROT.Map.Cellular:_getNeighbors(cx, cy)
     return rst
 end
 
+function ROT.Map.Cellular:_completeMaze()
+    -- Collect all zones
+    local zones={}
+    for i=1,self._width do
+        for j=1,self._height do
+            if self._map[i][j]==0 then
+                self:_addZoneFrom(i,j,zones)
+            end
+        end
+    end
+    -- overwrite zones below a certain size
+    -- and connect zones
+    for i=1,#zones do
+        if #zones[i]<self._options.minimumZoneArea then
+            for _,v in pairs(zones[i]) do
+                self._map[v[1]][v[2]]=1
+            end
+        else
+            local rx=self._rng:random(1,self._width)
+            local ry=self._rng:random(1,self._height)
+            while self._map[rx][ry]~=1 and self._map[rx][ry]~=i do
+                rx=self._rng:random(1,self._width)
+                ry=self._rng:random(1,self._height)
+            end
+            local t=zones[i][self._rng:random(1,#zones[i])]
+            self:_tunnel(t[1],t[2],rx,ry)
+            -- re-establish floors as 0 for this zone
+            for _,v in pairs(zones[i]) do
+                self._map[v[1]][v[2]]=0
+            end
+        end
+    end
+end
+
+function ROT.Map.Cellular:_addZoneFrom(x,y,zones)
+    local dirs=self._dirs
+    local todo={{x,y}}
+    table.insert(zones,{})
+    local zId =#zones+1
+    self._map[x][y]=zId
+    table.insert(zones[#zones], {x,y})
+    while #todo>0 do
+        local t=table.remove(todo)
+        local tx=t[1]
+        local ty=t[2]
+        for _,v in pairs(dirs) do
+            local nx=tx+v[1]
+            local ny=ty+v[2]
+            if self._map[nx] and self._map[nx][ny] and self._map[nx][ny]==0 then
+                self._map[nx][ny]=zId
+                table.insert(zones[#zones], {nx,ny})
+                table.insert(todo, {nx,ny})
+            end
+        end
+    end
+end
+
+function ROT.Map.Cellular:_tunnel(sx,sy,ex,ey)
+    local xOffset=ex-sx
+    local yOffset=ey-sy
+    local xpos   =sx
+    local ypos   =sy
+    local moves={}
+    local xAbs=math.abs(xOffset)
+    local yAbs=math.abs(yOffset)
+    local firstHalf =self._rng:random()
+    local secondHalf=1-firstHalf
+    local xDir=xOffset>0 and 3 or 7
+    local yDir=yOffset>0 and 5 or 1
+    if xAbs<yAbs then
+        local tempDist=math.ceil(yAbs*firstHalf)
+        table.insert(moves, {yDir, tempDist})
+        table.insert(moves, {xDir, xAbs})
+        tempDist=math.floor(yAbs*secondHalf)
+        table.insert(moves, {yDir, tempDist})
+    else
+        local tempDist=math.ceil(xAbs*firstHalf)
+        table.insert(moves, {xDir, tempDist})
+        table.insert(moves, {yDir, yAbs})
+        tempDist=math.floor(xAbs*secondHalf)
+        table.insert(moves, {xDir, tempDist})
+    end
+
+    local dirs=ROT.DIRS.EIGHT
+    self._map[xpos][ypos]=0
+    while #moves>0 do
+        local move=table.remove(moves)
+        if move and move[1] and move[1]<9 and move[1]>0 then
+            while move[2]>0 do
+                xpos=xpos+dirs[move[1]][1]
+                ypos=ypos+dirs[move[1]][2]
+                self._map[xpos][ypos]=0
+                move[2]=move[2]-1
+            end
+        end
+    end
+end
+
 --- The Dungeon-style map Prototype.
 -- This class is extended by ROT.Map.Digger and ROT.Map.Uniform
 -- @module ROT.Map.Dungeon
-ROT.Map.Dungeon = ROT.Map:extends { _rooms, _corridors }
+ROT.Map.Dungeon = ROT.Map:extends { }
 
 --- Constructor.
--- Called with ROT.Map.Cellular:new()
+-- Called with ROT.Map.Dungeon:new()
 -- @tparam int width Width in cells of the map
 -- @tparam int height Height in cells of the map
 function ROT.Map.Dungeon:__init(width, height)
@@ -1965,21 +2099,35 @@ end
 -- @treturn table A table containing objects of the type ROT.Map.Room
 function ROT.Map.Dungeon:getRooms() return self._rooms end
 
+--- Get doors
+-- Get a table of doors on the map
+-- @treturn table A table {{x=int, y=int},...} for doors.
+function ROT.Map.Dungeon:getDoors()
+    local result={}
+    for _,v in pairs(self._rooms) do
+        for l in pairs(v._doors) do
+            local s=l:split(',')
+            table.insert(result, {x=tonumber(s[1]), y=tonumber(s[2])})
+        end
+    end
+    return result
+end
+
 --- Get corridors
 -- Get a table of corridors on the map
 -- @treturn table A table containing objects of the type ROT.Map.Corridor
 function ROT.Map.Dungeon:getCorridors() return self._corridors end
 
 ROT.Map.Feature = class { __name='Feature' }
-function ROT.Map.Feature:isValid(gen, canBeDugCallback) end
-function ROT.Map.Feature:create(gen, digCallback) end
+function ROT.Map.Feature:isValid() end
+function ROT.Map.Feature:create() end
 function ROT.Map.Feature:debug() end
-function ROT.Map.Feature:createRandomAt(x, y, dx, dy, options) end
+function ROT.Map.Feature:createRandomAt() end
 
 --- Room object.
 -- Used by ROT.Map.Uniform and ROT.Map.Digger to create maps
 -- @module ROT.Map.Room
-ROT.Map.Room = ROT.Map.Feature:extends { _x1, _x2, _y1, _y2, _doorX, _doorY, _rng }
+ROT.Map.Room = ROT.Map.Feature:extends { }
 
 --- Constructor.
 -- creates a new room object with the assigned values
@@ -1989,7 +2137,7 @@ ROT.Map.Room = ROT.Map.Feature:extends { _x1, _x2, _y1, _y2, _doorX, _doorY, _rn
 -- @tparam int y2 Bottom wall
 -- @tparam[opt] int doorX x-position of door
 -- @tparam[opt] int doorY y-position of door
-function ROT.Map.Room:__init(x1, y1, x2, y2, doorX, doorY)
+function ROT.Map.Room:__init(x1, y1, x2, y2, doorX, doorY, rng)
     self._x1   =x1
     self._x2   =x2
     self._y1   =y1
@@ -1999,8 +2147,8 @@ function ROT.Map.Room:__init(x1, y1, x2, y2, doorX, doorY)
         self._doors[doorX..','..doorY] = 1
     end
     self.__name='Room'
-    self._rng  =ROT.RNG.Twister:new()
-    self._rng:randomseed()
+    self._rng  =rng and rng or ROT.RNG.Twister:new()
+    if not rng then self._rng:randomseed() end
 end
 
 --- Create Random with position.
@@ -2018,8 +2166,8 @@ function ROT.Map.Room:createRandomAt(x, y, dx, dy, options, rng)
     local max  =options.roomWidth[2]
     local width=min+math.floor(rng:random(min, max))
 
-    local min   =options.roomHeight[1]
-    local max   =options.roomHeight[2]
+    min=options.roomHeight[1]
+    max=options.roomHeight[2]
     local height=min+math.floor(rng:random(min,max))
 
     if dx==1 then
@@ -2052,8 +2200,8 @@ function ROT.Map.Room:createRandomCenter(cx, cy, options, rng)
     local max  =options.roomWidth[2]
     local width=min+math.floor(rng:random()*(max-min+1))
 
-    local min   =options.roomHeight[1]
-    local max   =options.roomHeight[2]
+    min=options.roomHeight[1]
+    max=options.roomHeight[2]
     local height=min+math.floor(rng:random()*(max-min+1))
 
     local x1=cx-math.floor(rng:random()*width)
@@ -2076,8 +2224,8 @@ function ROT.Map.Room:createRandom(availWidth, availHeight, options, rng)
     local max  =options.roomWidth[2]
     local width=math.floor(rng:random(min, max))
 
-    local min   =options.roomHeight[1]
-    local max   =options.roomHeight[2]
+    min=options.roomHeight[1]
+    max=options.roomHeight[2]
     local height=math.floor(rng:random(min, max))
 
     local left=availWidth-width
@@ -2112,6 +2260,25 @@ end
 -- @treturn ROT.Map.Room self
 function ROT.Map.Room:clearDoors()
     self._doors={}
+    return self
+end
+
+--- Add all doors based on available walls.
+-- @tparam userdata gen The map generator calling this function. Lack of bind() function requires this. This is mainly so the map generator can hava a self reference in the two callbacks.
+-- @tparam function isWallCallback
+-- @treturn ROT.Map.Room self
+function ROT.Map.Room:addDoors(gen, isWallCallback)
+    local left  =self._x1-1
+    local right =self._x2+1
+    local top   =self._y1-1
+    local bottom=self._y2+1
+    for x=left,right do
+        for y=top,bottom do
+            if x~=left and x~=right and y~=top and y~=bottom then
+            elseif isWallCallback(gen,x,y) then
+            else self:addDoor(x,y) end
+        end
+    end
     return self
 end
 
@@ -2194,10 +2361,359 @@ function ROT.Map.Room:getTop()    return self._y1 end
 -- @treturn int bottom-most floor
 function ROT.Map.Room:getBottom() return self._y2 end
 
+--- BrogueRoom object.
+-- Used by ROT.Map.Brogue to create maps with 'cross rooms'
+-- @module ROT.Map.BrogueRoom
+ROT.Map.BrogueRoom = ROT.Map.Feature:extends { }
+ROT.Map.BrogueRoom.__name='BrogueRoom'
+--- Constructor.
+-- creates a new BrogueRoom object with the assigned values
+-- @tparam table dims Represents dimensions and positions of the rooms two rectangles
+-- @tparam[opt] int doorX x-position of door
+-- @tparam[opt] int doorY y-position of door
+-- @tparam userdata rng Userdata with a .random(self, min, max) function
+function ROT.Map.BrogueRoom:__init(dims, doorX, doorY, rng)
+    self._dims =dims
+    self._doors={}
+    self._walls={}
+    if doorX then
+        self._doors[1] = {doorX, doorY}
+    end
+    self._rng=rng and rng or ROT.RNG.Twister:new()
+    if not rng then self._rng:randomseed() end
+end
+
+--- Create room at bottom center with dims 9x10 and 20x4
+-- @tparam int availWidth Typically the width of the map.
+-- @tparam int availHeight Typically the height of the map
+function ROT.Map.BrogueRoom:createEntranceRoom(availWidth, availHeight)
+    local dims={}
+    dims.w1=9
+    dims.h1=10
+    dims.w2=20
+    dims.h2=4
+
+    dims.x1=math.floor(availWidth/2-dims.w1/2)
+    dims.y1=math.floor(availHeight-dims.h1-1)
+    dims.x2=math.floor(availWidth/2-dims.w2/2)
+    dims.y2=math.floor(availHeight-dims.h2-1)
+
+    return ROT.Map.BrogueRoom:new(dims)
+end
+
+--- Create Random with position.
+-- @tparam int x x-position of room
+-- @tparam int y y-position of room
+-- @tparam int dx x-direction in which to build room 1==right -1==left
+-- @tparam int dy y-direction in which to build room 1==down  -1==up
+-- @tparam table options Options
+  -- @tparam table options.roomWidth minimum/maximum width for room {min,max}
+  -- @tparam table options.roomHeight minimum/maximum height for room {min,max}
+  -- @tparam table options.crossWidth minimum/maximum width for rectangleTwo {min,max}
+  -- @tparam table options.crossHeight minimum/maximum height for rectangleTwo {min,max}
+-- @tparam[opt] userData rng A user defined object with a .random(self, min, max) method
+function ROT.Map.BrogueRoom:createRandomAt(x, y, dx, dy, options, rng)
+    rng=rng and rng or math.random
+    local dims={}
+
+    local min=options.roomWidth[1]
+    local max=options.roomWidth[2]
+    dims.w1=math.floor(rng:random(min,max))
+
+    min=options.roomHeight[1]
+    max=options.roomHeight[2]
+    dims.h1=math.floor(rng:random(min,max))
+
+    min=options.crossWidth[1]
+    max=options.crossWidth[2]
+    dims.w2=math.floor(rng:random(min,max))
+
+    min=options.crossHeight[1]
+    max=options.crossHeight[2]
+    dims.h2=math.floor(rng:random(min,max))
+
+    if dx==1 then
+        -- wider rect gets x+1
+        -- wider gets y-math.floor(rng:random()*widersHeight)
+        if dims.w1>dims.w2 then
+            dims.x1=x+1
+            dims.y1=y-math.floor(rng:random()*dims.h1)
+            dims.x2=math.floor(rng:random(dims.x1, (dims.x1+dims.w1)-dims.w2))
+            dims.y2=math.floor(rng:random(dims.y1, (dims.y1+dims.h1)-dims.h2))
+        else
+            dims.x2=x+1
+            dims.y2=y-math.floor(rng:random()*dims.h2)
+            dims.x1=math.floor(rng:random(dims.x2, (dims.x2+dims.w2)-dims.w1))
+            dims.y1=math.floor(rng:random(dims.y2, (dims.y2+dims.h2)-dims.h1))
+        end
+    elseif dx==-1 then
+        -- wider rect gets x-widersWidth
+        -- wider gets y-math.floor(rng:random()*widersHeight)
+        if dims.w1>dims.w2 then
+            dims.x1=x-dims.w1-1
+            dims.y1=y-math.floor(rng:random()*dims.h1)
+            dims.x2=math.floor(rng:random(dims.x1, (dims.x1+dims.w1)-dims.w2))
+            dims.y2=math.floor(rng:random(dims.y1, (dims.y1+dims.h1)-dims.h2))
+        else
+            dims.x2=x-dims.w2-1
+            dims.y2=y-math.floor(rng:random()*dims.h2)
+            dims.x1=math.floor(rng:random(dims.x2, (dims.x2+dims.w2)-dims.w1))
+            dims.y1=math.floor(rng:random(dims.y2, (dims.y2+dims.h2)-dims.h1))
+        end
+    elseif dy==1 then
+        -- taller gets y+1
+        -- taller gets x-math.floor(rng:random()*width)
+        if dims.h1>dims.h2 then
+            dims.y1=y+1
+            dims.x1=x-math.floor(rng:random()*dims.w1)
+            dims.x2=math.floor(rng:random(dims.x1, (dims.x1+dims.w1)-dims.w2))
+            dims.y2=math.floor(rng:random(dims.y1, (dims.y1+dims.h1)-dims.h2))
+        else
+            dims.y2=y+1
+            dims.x2=x-math.floor(rng:random()*dims.w2)
+            dims.x1=math.floor(rng:random(dims.x2, (dims.x2+dims.w2)-dims.w1))
+            dims.y1=math.floor(rng:random(dims.y2, (dims.y2+dims.h2)-dims.h1))
+        end
+    elseif dy==-1 then
+        -- taller gets y-tallersHeight
+        -- taller gets x-math.floor(rng:random()*width)
+        if dims.h1>dims.h2 then
+            dims.y1=y-dims.h1-1
+            dims.x1=x-math.floor(rng:random()*dims.w1)
+            dims.x2=math.floor(rng:random(dims.x1, (dims.x1+dims.w1)-dims.w2))
+            dims.y2=math.floor(rng:random(dims.y1, (dims.y1+dims.h1)-dims.h2))
+        else
+            dims.y2=y-dims.h2-1
+            dims.x2=x-math.floor(rng:random()*dims.w2)
+            dims.x1=math.floor(rng:random(dims.x2, (dims.x2+dims.w2)-dims.w1))
+            dims.y1=math.floor(rng:random(dims.y2, (dims.y2+dims.h2)-dims.h1))
+        end
+    else
+        assert(false, 'dx or dy must be 1 or -1')
+    end
+    --if dims.x2~=dims.x2 then dims.x2=dims.x1 end
+    --if dims.y2~=dims.y2 then dims.y2=dims.y1 end
+    --if dims.x1~=dims.x1 then dims.x1=dims.x2 end
+    --if dims.y1~=dims.y1 then dims.y1=dims.y2 end
+    return ROT.Map.BrogueRoom:new(dims, x, y)
+end
+
+--- Create Random with center position.
+-- @tparam int cx x-position of room's center
+-- @tparam int cy y-position of room's center
+-- @tparam table options Options
+  -- @tparam table options.roomWidth minimum/maximum width for room {min,max}
+  -- @tparam table options.roomHeight minimum/maximum height for room {min,max}
+  -- @tparam table options.crossWidth minimum/maximum width for rectangleTwo {min,max}
+  -- @tparam table options.crossHeight minimum/maximum height for rectangleTwo {min,max}
+-- @tparam[opt] userData rng A user defined object with a .random(min, max) method
+function ROT.Map.BrogueRoom:createRandomCenter(cx, cy, options, rng)
+    rng=rng and rng or math.random
+    local dims={}
+    --- Generate Rectangle One dimensions
+    local min=options.roomWidth[1]
+    local max=options.roomWidth[2]
+    dims.w1=math.floor(rng:random(min,max))
+
+    min=options.roomHeight[1]
+    max=options.roomHeight[2]
+    dims.h1=math.floor(rng:random(min,max))
+
+    dims.x1=cx-math.floor(rng:random()*dims.w1)
+    dims.y1=cy-math.floor(rng:random()*dims.h1)
+
+    --- Generate Rectangle Two dimensions
+    min=options.roomWidth[1]
+    max=options.roomWidth[2]
+    dims.w2=math.floor(rng:random(min,max))
+
+    min=options.roomHeight[1]
+    max=options.roomHeight[2]
+    dims.h2=math.floor(rng:random(min,max))
+
+    dims.x2=math.floor(rng:random(dims.x1, (dims.x1+dims.w1)-dims.w2))
+    dims.y2=math.floor(rng:random(dims.y1, (dims.y1+dims.h1)-dims.h2))
+    if dims.x2~=dims.x2 then dims.x2=dims.x1 end
+    if dims.y2~=dims.y2 then dims.y2=dims.y1 end
+
+    return ROT.Map.BrogueRoom:new(dims)
+end
+
+--- Create random with no position.
+-- @tparam int availWidth Typically the width of the map.
+-- @tparam int availHeight Typically the height of the map
+-- @tparam table options Options
+  -- @tparam table options.roomWidth minimum/maximum width for rectangleOne {min,max}
+  -- @tparam table options.roomHeight minimum/maximum height for rectangleOne {min,max}
+  -- @tparam table options.crossWidth minimum/maximum width for rectangleTwo {min,max}
+  -- @tparam table options.crossHeight minimum/maximum height for rectangleTwo {min,max}
+-- @tparam[opt] userData rng A user defined object with a .random(min, max) method
+function ROT.Map.BrogueRoom:createRandom(availWidth, availHeight, options, rng)
+    rng=rng and rng or math.random
+    local dims={}
+    --- Generate Rectangle One dimensions
+    local min=options.roomWidth[1]
+    local max=options.roomWidth[2]
+    dims.w1=math.floor(rng:random(min,max))
+
+    min=options.roomHeight[1]
+    max=options.roomHeight[2]
+    dims.h1=math.floor(rng:random(min,max))
+
+    -- Consider moving these to aw-(w1+w2) and ah-(h1+h2)
+    local left=availWidth-dims.w1
+    local top=availHeight-dims.h1
+
+    dims.x1=math.floor(rng:random()*left)
+    dims.y1=math.floor(rng:random()*top)
+
+    --- Generate Rectangle Two dimensions
+    min=options.crossWidth[1]
+    max=options.crossWidth[2]
+    dims.w2=math.floor(rng:random(min,max))
+
+    min=options.crossHeight[1]
+    max=options.crossHeight[2]
+    dims.h2=math.floor(rng:random(min,max))
+
+    dims.x2=math.floor(rng:random(dims.x1, (dims.x1+dims.w1)-dims.w2))
+    dims.y2=math.floor(rng:random(dims.y1, (dims.y1+dims.h1)-dims.h2))
+    if dims.x2~=dims.x2 then dims.x2=dims.x1 end
+    if dims.y2~=dims.y2 then dims.y2=dims.y1 end
+    return ROT.Map.BrogueRoom:new(dims)
+end
+
+--- Use two callbacks to confirm room validity.
+-- @tparam userdata gen The map generator calling this function. Lack of bind() function requires this. This is mainly so the map generator can hava a self reference in the two callbacks.
+-- @tparam function isWallCallback A function with three parameters (gen, x, y) that will return true if x, y represents a wall space in a map.
+-- @tparam function canBeDugCallback A function with three parameters (gen, x, y) that will return true if x, y represents a map cell that can be made into floorspace.
+-- @treturn boolean true if room is valid.
+function ROT.Map.BrogueRoom:isValid(gen, isWallCallback, canBeDugCallback)
+    local dims=self._dims
+    if dims.x2~=dims.x2 or dims.y2~=dims.y2 or dims.x1~=dims.x1 or dims.y1~=dims.y1  then
+        return false
+    end
+
+    local left  =self:getLeft()-1
+    local right =self:getRight()+1
+    local top   =self:getTop()-1
+    local bottom=self:getBottom()+1
+    for x=left,right do
+        for y=top,bottom do
+            if self:_coordIsFloor(x, y) then
+                if not isWallCallback(gen, x, y) or not canBeDugCallback(gen, x, y) then
+                    return false
+                end
+            elseif self:_coordIsWall(x, y) then table.insert(self._walls, {x,y}) end
+        end
+    end
+
+    return true
+end
+
+--- Create.
+-- Function runs a callback to dig the room into a map
+-- @tparam userdata gen The map generator calling this function. Passed as self to the digCallback
+-- @tparam function digCallback The function responsible for digging the room into a map.
+function ROT.Map.BrogueRoom:create(gen, digCallback)
+    local value=0
+    local left  =self:getLeft()-1
+    local right =self:getRight()+1
+    local top   =self:getTop()-1
+    local bottom=self:getBottom()+1
+    for x=left,right do
+        for y=top,bottom do
+            if self._doors[x..','..y] then
+                value=2
+            elseif self:_coordIsFloor(x, y) then
+                value=0
+            else
+                value=1
+            end
+            digCallback(gen, x, y, value)
+        end
+    end
+end
+
+function ROT.Map.BrogueRoom:_coordIsFloor(x, y)
+    local d=self._dims
+    if x>=d.x1 and x<=d.x1+d.w1 and y>=d.y1 and y<=d.y1+d.h1 then
+        return true
+    elseif x>=d.x2 and x<=d.x2+d.w2 and y>=d.y2 and y<=d.y2+d.h2 then
+        return true
+    end
+    return false
+end
+
+function ROT.Map.BrogueRoom:_coordIsWall(x, y)
+    local dirs=ROT.DIRS.EIGHT
+    for i=1,#dirs do
+        local dir=dirs[i]
+        if self:_coordIsFloor(x+dir[1], y+dir[2]) then return true end
+    end
+    return false
+end
+
+function ROT.Map.BrogueRoom:clearDoors()
+    self._doors={}
+end
+
+function ROT.Map.BrogueRoom:getCenter()
+    local d=self._dims
+    local l=math.min(d.x1, d.x2)
+    local r=math.max(d.x1+d.w1, d.x2+d.w2)
+
+    local t=math.min(d.y1, d.y2)
+    local b=math.max(d.y1+d.h1, d.y2+d.h2)
+
+    return {math.round((l+r)/2), math.round((t+b)/2)}
+end
+function ROT.Map.BrogueRoom:getLeft()
+    return math.min(self._dims.x1, self._dims.x2)
+end
+function ROT.Map.BrogueRoom:getRight()
+    return math.max(self._dims.x1+self._dims.w1, self._dims.x2+self._dims.w2)
+end
+function ROT.Map.BrogueRoom:getTop()
+    return math.min(self._dims.y1, self._dims.y2)
+end
+function ROT.Map.BrogueRoom:getBottom()
+    return math.max(self._dims.y1+self._dims.h1, self._dims.y2+self._dims.h2)
+end
+function ROT.Map.BrogueRoom:debug()
+    local cmd=write and write or io.write
+    local str=''
+    for k,v in pairs(self._dims) do
+        str=str..k..'='..v..','
+    end
+    cmd(str)
+end
+function ROT.Map.BrogueRoom:addDoor(x, y)
+    self._doors[x..','..y]=1
+end
+--- Add all doors based on available walls.
+-- @tparam userdata gen The map generator calling this function. Lack of bind() function requires this. This is mainly so the map generator can hava a self reference in the two callbacks.
+-- @tparam function isWallCallback
+-- @treturn ROT.Map.Room self
+function ROT.Map.BrogueRoom:addDoors(gen, isWallCallback)
+    local left  =self:getLeft()
+    local right =self:getRight()
+    local top   =self:getTop()
+    local bottom=self:getBottom()
+    for x=left,right do
+        for y=top,bottom do
+            if x~=left and x~=right and y~=top and y~=bottom then
+            elseif isWallCallback(gen, x,y) then
+            else self:addDoor(x,y) end
+        end
+    end
+    return self
+end
+
 --- Corridor object.
 -- Used by ROT.Map.Uniform and ROT.Map.Digger to create maps
 -- @module ROT.Map.Corridor
-ROT.Map.Corridor = ROT.Map.Feature:extends { _startX, _startY, _endX, _endY, _rng }
+ROT.Map.Corridor = ROT.Map.Feature:extends { }
 
 --- Constructor.
 -- Called with ROT.Map.Corridor:new()
@@ -2205,7 +2721,7 @@ ROT.Map.Corridor = ROT.Map.Feature:extends { _startX, _startY, _endX, _endY, _rn
 -- @tparam int startY y-position of first floospace in corridor
 -- @tparam int endX x-position of last floospace in corridor
 -- @tparam int endY y-position of last floospace in corridor
-function ROT.Map.Corridor:__init(startX, startY, endX, endY)
+function ROT.Map.Corridor:__init(startX, startY, endX, endY, rng)
     assert(ROT, 'require rot')
     self._startX       =startX
     self._startY       =startY
@@ -2213,8 +2729,8 @@ function ROT.Map.Corridor:__init(startX, startY, endX, endY)
     self._endY         =endY
     self._endsWithAWall=true
     self.__name        ='Corridor'
-    self._rng  =ROT.RNG.Twister:new()
-    self._rng:randomseed()
+    self._rng  =rng and rng or ROT.RNG.Twister:new()
+    if not rng then self._rng:randomseed() end
 end
 
 --- Create random with position.
@@ -2278,6 +2794,7 @@ function ROT.Map.Corridor:isValid(gen, isWallCallback, canBeDugCallback)
     if length==0 then return false end
     if length==1 and isWallCallback(gen, self._endX+dx, self._endY+dy) then return false end
 
+
     local firstCornerBad=not isWallCallback(gen, self._endX+dx+nx, self._endY+dy+ny)
     local secondCornrBad=not isWallCallback(gen, self._endX+dx-nx, self._endY+dy-ny)
     self._endsWithAWall =    isWallCallback(gen, self._endX+dx   , self._endY+dy   )
@@ -2319,7 +2836,6 @@ function ROT.Map.Corridor:createPriorityWalls(gen, priorityWallCallback)
     local sy    =self._startY
     local dx    =self._endX-sx
     local dy    =self._endY-sy
-    local length=1+math.max(math.abs(dx), math.abs(dy))
 
     if dx>0 then dx=dx/math.abs(dx) end
     if dy>0 then dy=dy/math.abs(dy) end
@@ -2334,7 +2850,7 @@ end
 --- The Digger Map Generator.
 -- See http://www.roguebasin.roguelikedevelopment.org/index.php?title=Dungeon-Building_Algorithm.
 -- @module ROT.Map.Digger
-ROT.Map.Digger=ROT.Map.Dungeon:extends { _options, _rng }
+ROT.Map.Digger=ROT.Map.Dungeon:extends { }
 
 --- Constructor.
 -- Called with ROT.Map.Digger:new()
@@ -2347,9 +2863,8 @@ ROT.Map.Digger=ROT.Map.Dungeon:extends { _options, _rng }
   -- @tparam[opt=0.2] number options.dugPercentage we stop after this percentage of level area has been dug out
   -- @tparam[opt=1000] int options.timeLimit stop after this much time has passed (msec)
   -- @tparam[opt=false] boolean options.nocorridorsmode If true, do not use corridors to generate this map
-function ROT.Map.Digger:__init(width, height, options)
+function ROT.Map.Digger:__init(width, height, options, rng)
     ROT.Map.Digger.super.__init(self, width, height)
-    assert(ROT, 'require rot')
 
     self._options={
                     roomWidth={3,8},
@@ -2365,15 +2880,15 @@ function ROT.Map.Digger:__init(width, height, options)
         end
     end
 
-    self._features={rooms=4, corridors=4}
+    self._features={Room=4, Corridor=4}
     if self._options.nocorridorsmode then
-        self._features.corridors=nil
+        self._features.Corridor=nil
     end
     self._featureAttempts=20
     self._walls={}
 
-    self._rng  =ROT.RNG.Twister:new()
-    self._rng:randomseed()
+    self._rng  =rng and rng or ROT.RNG.Twister:new()
+    if not rng then self._rng:randomseed() end
 end
 
 --- Create.
@@ -2389,7 +2904,7 @@ function ROT.Map.Digger:create(callback)
     self._map      =self:_fillMap(1)
     self._walls    ={}
     self._dug      =0
-    local area     =(self._width-2)*self._height-2
+    local area     =(self._width-2)*(self._height-2)
 
     self:_firstRoom()
 
@@ -2411,9 +2926,6 @@ function ROT.Map.Digger:create(callback)
             repeat
                 featureAttempts=featureAttempts+1
                 if self:_tryFeature(x, y, dir[1], dir[2]) then
-                    if #self._rooms+#self._corridors==2 then
-                        self._rooms[1]:addDoor(x, y)
-                    end
                     self:_removeSurroundingWalls(x, y)
                     self:_removeSurroundingWalls(x-dir[1], y-dir[2])
                     break
@@ -2427,6 +2939,8 @@ function ROT.Map.Digger:create(callback)
             end
         end
     until self._dug/area > self._options.dugPercentage and priorityWalls<1
+
+    self:_addDoors()
 
     if callback then
         for i=1,self._width do
@@ -2486,33 +3000,21 @@ function ROT.Map.Digger:_findWall()
 end
 
 function ROT.Map.Digger:_tryFeature(x, y, dx, dy)
-    local feature=nil
-    local total  =0
-    for k,_ in pairs(self._features) do total=total+self._features[k] end
-    local rand=math.floor(self._rng:random()*total)
-    local sub=0
-    local ftype=''
-    for k,_ in pairs(self._features) do
-        sub=sub+self._features[k]
-        if rand<sub then
-            ftype=k
-            feature=k=='rooms' and ROT.Map.Room or ROT.Map.Corridor
-            break
-        end
-    end
-
-    feature=feature:createRandomAt(x, y, dx, dy, self._options, self._rng)
+    local type=self._rng:getWeightedValue(self._features)
+    local feature=ROT.Map[type]:createRandomAt(x,y,dx,dy,self._options,self._rng)
     if not feature:isValid(self, self._isWallCallback, self._canBeDugCallback) then
         return false
     end
+
     feature:create(self, self._digCallback)
-    if ftype=='rooms' then
+
+    if type=='Room' then
         table.insert(self._rooms, feature)
-    elseif ftype=='corridors' then
+    elseif type=='Corridor' then
         feature:createPriorityWalls(self, self._priorityWallCallback)
         table.insert(self._corridors, feature)
-        else assert(false, 'couldn\'t get ftype')
     end
+
     return true
 end
 
@@ -2520,8 +3022,8 @@ function ROT.Map.Digger:_removeSurroundingWalls(cx, cy)
     local deltas=ROT.DIRS.FOUR
     for i=1,#deltas do
         local delta=deltas[i]
-        local x    =delta[1]
-        local y    =delta[2]
+        local x    =cx+delta[1]
+        local y    =cy+delta[2]
         self._walls[x..','..y]=nil
         x=2*delta[1]
         y=2*delta[2]
@@ -2545,12 +3047,20 @@ function ROT.Map.Digger:_getDiggingDirection(cx, cy)
     end
     if not result or #result<1 then return nil end
 
-    return {result[1]==0 and result[1] or -result[1], result[2]==0 and result[2] or -result[2]}
+    return {-result[1], -result[2]}
+end
+
+function ROT.Map.Digger:_addDoors()
+    for i=1,#self._rooms do
+        local room=self._rooms[i]
+        room:clearDoors()
+        room:addDoors(self, self._isWallCallback)
+    end
 end
 
 --- The Uniform Map Generator.
 -- See http://www.roguebasin.rogue
-ROT.Map.Uniform=ROT.Map.Dungeon:extends { _options, _rng }
+ROT.Map.Uniform=ROT.Map.Dungeon:extends { }
 
 --- Constructor.
 -- Called with ROT.Map.Uniform:new()
@@ -2561,7 +3071,7 @@ ROT.Map.Uniform=ROT.Map.Dungeon:extends { _options, _rng }
   -- @tparam[opt={4,6}] table options.roomHeight room minimum and maximum height
   -- @tparam[opt=0.2] number options.dugPercentage we stop after this percentage of level area has been dug out
   -- @tparam[opt=1000] int options.timeLimit stop after this much time has passed (msec)
-function ROT.Map.Uniform:__init(width, height, options)
+function ROT.Map.Uniform:__init(width, height, options, rng)
     ROT.Map.Uniform.super.__init(self, width, height)
     assert(ROT, 'require rot')
     self.__name='Uniform'
@@ -2580,8 +3090,8 @@ function ROT.Map.Uniform:__init(width, height, options)
     self._corridorAttempts=20
     self._connected={}
     self._unconnected={}
-    self._rng=ROT.RNG.Twister:new()
-    self._rng:randomseed()
+    self._rng=rng and rng or ROT.RNG.Twister:new()
+    if not rng then self._rng:randomseed() end
 end
 
 --- Create.
@@ -2710,7 +3220,7 @@ function ROT.Map.Uniform:_connectRooms(room1, room2)
         index    =2
     end
 
-    local index2=3-index
+    local index2=(index%2)+1
 
     local start=self:_placeInWall(room1, dirIndex1)
     if not start or #start<1 then return false end
@@ -2718,16 +3228,17 @@ function ROT.Map.Uniform:_connectRooms(room1, room2)
 
     if start[index] >= min and start[index] <= max then
         endTbl=table.slice(start)
-        local value =nil
-        if dirIndex2==1 then value=room2:getTop()-1
-        elseif dirIndex2==2 then value=room2:getRight()+1
+        local value=nil
+        if     dirIndex2==1 then value=room2:getTop()   -1
+        elseif dirIndex2==2 then value=room2:getRight() +1
         elseif dirIndex2==3 then value=room2:getBottom()+1
-        elseif dirIndex2==4 then value=room2:getLeft()-1 end
+        elseif dirIndex2==4 then value=room2:getLeft()  -1
+        end
         endTbl[index2]=value
         self:_digLine({start, endTbl})
     elseif start[index] < min-1 or start[index] > max+1 then
         local diff=start[index]-center2[index]
-        rotation=0
+        local rotation=0
         if dirIndex2==1 or dirIndex2==2 then rotation=diff<0 and 2 or 4
         elseif dirIndex2==3 or dirIndex2==4 then rotation=diff<0 and 4 or 2 end
         if rotation==0 then assert(false, 'failed to rotate') end
@@ -2757,15 +3268,9 @@ function ROT.Map.Uniform:_connectRooms(room1, room2)
     room1:addDoor(start[1],start[2])
     room2:addDoor(endTbl[1], endTbl[2])
 
-    local index=table.indexOf(self._unconnected, room1)
-    if index~=0 then
-        table.remove(self._unconnected, index)
-        table.insert(self._connected, room1)
-    end
-    local index=table.indexOf(self._unconnected, room2)
-    if index~=0 then
-        table.remove(self._unconnected, index)
-        table.insert(self._connected, room2)
+    index=table.indexOf(self._unconnected, room1)
+    if index>0 then
+        table.insert(self._connected, table.remove(self._unconnected, index))
     end
 
     return true
@@ -2849,7 +3354,7 @@ end
 -- A map generator based on the original Rogue map gen algorithm
 -- See http://kuoi.com/~kamikaze/GameDesign/art07_rogue_dungeon.php
 -- @module ROT.Map.Rogue
-ROT.Map.Rogue=ROT.Map:extends { _options, _rng }
+ROT.Map.Rogue=ROT.Map.Dungeon:extends { }
 
 --- Constructor.
 -- @tparam int width Width in cells of the map
@@ -2859,13 +3364,14 @@ ROT.Map.Rogue=ROT.Map:extends { _options, _rng }
   -- @tparam int options.cellHeight Number of cells to create on the vertical (number of rooms vertically)
   -- @tparam int options.roomWidth Room min and max width
   -- @tparam int options.roomHeight Room min and max height
-function ROT.Map.Rogue:__init(width, height, options)
+function ROT.Map.Rogue:__init(width, height, options, rng)
     ROT.Map.Rogue.super.__init(self, width, height)
     self.__name='Rogue'
-    self._options={cellWidth=3, cellHeight=3}
+    self._doors={}
+    self._options={cellWidth=math.floor(width*0.0375), cellHeight=math.floor(height*0.125)}
     if options then for k,_ in pairs(options) do self._options[k]=options[k] end end
-    self._rng=ROT.RNG.Twister:new()
-    self._rng:randomseed()
+    self._rng=rng and rng or ROT.RNG.Twister:new()
+    if not rng then self._rng:randomseed() end
     function calculateRoomSize(size, cell)
         local max=math.floor((size/cell)*0.8)
         local min=math.floor((size/cell)*0.25)
@@ -2892,7 +3398,7 @@ end
 -- @treturn ROT.Map.Cellular|nil self or nil if time limit is reached
 function ROT.Map.Rogue:create(callback)
     self.map=self:_fillMap(1)
-    self.rooms={}
+    self._rooms={}
     self.connectedCells={}
 
     self:_initRooms()
@@ -2911,6 +3417,8 @@ function ROT.Map.Rogue:create(callback)
     return self
 end
 
+function ROT.Map.Rogue:getDoors() return self._doors end
+
 function ROT.Map.Rogue:_getRandomInt(min, max)
     min=min and min or 0
     max=max and max or 1
@@ -2919,9 +3427,9 @@ end
 
 function ROT.Map.Rogue:_initRooms()
     for i=1,self._options.cellWidth do
-        self.rooms[i]={}
+        self._rooms[i]={}
         for j=1,self._options.cellHeight do
-            self.rooms[i][j]={x=0, y=0, width=0, height=0, connections={}, cellx=i, celly=j}
+            self._rooms[i][j]={x=0, y=0, width=0, height=0, connections={}, cellx=i, celly=j}
         end
     end
 end
@@ -2944,7 +3452,7 @@ function ROT.Map.Rogue:_connectRooms()
 
             if (ncgx>0 and ncgx<=self._options.cellWidth) and
                (ncgy>0 and ncgy<=self._options.cellHeight) then
-                room=self.rooms[cgx][cgy]
+                room=self._rooms[cgx][cgy]
 
                 if #room.connections>0 then
                     if room.connections[1][1] == ncgx and
@@ -2953,7 +3461,7 @@ function ROT.Map.Rogue:_connectRooms()
                     end
                 end
 
-                otherRoom=self.rooms[ncgx][ncgy]
+                otherRoom=self._rooms[ncgx][ncgy]
 
                 if #otherRoom.connections==0 then
                     table.insert(otherRoom.connections, {cgx,cgy})
@@ -2971,13 +3479,12 @@ function ROT.Map.Rogue:_connectUnconnectedRooms()
     local cw=self._options.cellWidth
     local ch=self._options.cellHeight
 
-    local randomConnectedCell
     self.connectedCells=table.randomize(self.connectedCells)
     local room, otherRoom, validRoom
 
     for i=1,cw do
         for j=1,ch do
-            room=self.rooms[i][j]
+            room=self._rooms[i][j]
 
             if #room.connections==0 then
                 local dirs={1,3,5,7}
@@ -2991,7 +3498,7 @@ function ROT.Map.Rogue:_connectUnconnectedRooms()
                     if newI>0 and newI<=cw and
                        newJ>0 and newJ<=ch then
 
-                        otherRoom=self.rooms[newI][newJ]
+                        otherRoom=self._rooms[newI][newJ]
                         validRoom=true
 
                         if #otherRoom.connections==0 then
@@ -3032,7 +3539,7 @@ function ROT.Map.Rogue:_createRooms()
     local roomw, roomh
     local roomWidth =self._options.roomWidth
     local roomHeight=self._options.roomHeight
-    local sx, sy, tx, ty
+    local sx, sy
     local otherRoom
 
 
@@ -3046,14 +3553,14 @@ function ROT.Map.Rogue:_createRooms()
             roomh=self:_getRandomInt(roomHeight[1], roomHeight[2])
 
             if j>1 then
-                otherRoom=self.rooms[i][j-1]
+                otherRoom=self._rooms[i][j-1]
                 while sy-(otherRoom.y+otherRoom.height)<3 do
                     sy=sy+1
                 end
             end
 
             if i>1 then
-                otherRoom=self.rooms[i-1][j]
+                otherRoom=self._rooms[i-1][j]
                 while sx-(otherRoom.x+otherRoom.width)<3 do
                     sx=sx+1
                 end
@@ -3080,10 +3587,10 @@ function ROT.Map.Rogue:_createRooms()
             sx=sx+sxOffset
             sy=sy+syOffset
 
-            self.rooms[i][j].x     =sx
-            self.rooms[i][j].y     =sy
-            self.rooms[i][j].width =roomw
-            self.rooms[i][j].height=roomh
+            self._rooms[i][j].x     =sx
+            self._rooms[i][j].y     =sy
+            self._rooms[i][j].width =roomw
+            self._rooms[i][j].height=roomh
 
             for ii=sx,sx+roomw-1 do
                 for jj=sy,sy+roomh-1 do
@@ -3106,6 +3613,7 @@ function ROT.Map.Rogue:_getWallPosition(aRoom, aDirection)
             door=ry-1
         end
         self.map[rx][door]=0
+        table.insert(self._doors,{x=rx, y=door})
     elseif aDirection==2 or aDirection==4 then
         ry=self:_getRandomInt(aRoom.y, aRoom.y+aRoom.height-1)
         if aDirection==2 then
@@ -3116,11 +3624,12 @@ function ROT.Map.Rogue:_getWallPosition(aRoom, aDirection)
             door=rx+1
         end
         self.map[door][ry]=0
+        table.insert(self._doors,{x=door, y=ry})
     end
     return {rx, ry}
 end
 
-function ROT.Map.Rogue:_drawCorridore(startPosition, endPosition)
+function ROT.Map.Rogue:_drawCorridor(startPosition, endPosition)
     local xOffset=endPosition[1]-startPosition[1]
     local yOffset=endPosition[2]-startPosition[2]
     local xpos   =startPosition[1]
@@ -3136,13 +3645,13 @@ function ROT.Map.Rogue:_drawCorridore(startPosition, endPosition)
         local tempDist=math.ceil(yAbs*firstHalf)
         table.insert(moves, {yDir, tempDist})
         table.insert(moves, {xDir, xAbs})
-        local tempDist=math.floor(yAbs*secondHalf)
+        tempDist=math.floor(yAbs*secondHalf)
         table.insert(moves, {yDir, tempDist})
     else
         local tempDist=math.ceil(xAbs*firstHalf)
         table.insert(moves, {xDir, tempDist})
         table.insert(moves, {yDir, yAbs})
-        local tempDist=math.floor(xAbs*secondHalf)
+        tempDist=math.floor(xAbs*secondHalf)
         table.insert(moves, {xDir, tempDist})
     end
 
@@ -3168,10 +3677,10 @@ function ROT.Map.Rogue:_createCorridors()
 
     for i=1,cw do
         for j=1,ch do
-            room=self.rooms[i][j]
+            room=self._rooms[i][j]
             for k=1,#room.connections do
                 connection=room.connections[k]
-                otherRoom =self.rooms[connection[1]][connection[2]]
+                otherRoom =self._rooms[connection[1]][connection[2]]
 
                 if otherRoom.cellx>room.cellx then
                     wall     =2
@@ -3186,19 +3695,318 @@ function ROT.Map.Rogue:_createCorridors()
                     wall     =1
                     otherWall=3
                 end
-                self:_drawCorridore(self:_getWallPosition(room, wall), self:_getWallPosition(otherRoom, otherWall))
+                self:_drawCorridor(self:_getWallPosition(room, wall), self:_getWallPosition(otherRoom, otherWall))
             end
         end
     end
 end
 
-ROT.Noise=class{ __name }
+--- The Brogue Map Generator.
+-- Based on the description of Brogues level generation at http://brogue.wikia.com/wiki/Level_Generation
+-- @module ROT.Map.Brogue
+ROT.Map.Brogue=ROT.Map.Dungeon:extends { }
+ROT.Map.Brogue.__name='Brogue'
+
+--- Constructor.
+-- Called with ROT.Map.Brogue:new(). A note: Brogue's map is 79x29. Consider using those dimensions for Display if you're looking to build a brogue-like.
+-- @tparam int width Width in cells of the map
+-- @tparam int height Height in cells of the map
+-- @tparam[opt] table options Options
+  -- @tparam[opt={4,20}] table options.roomWidth Room width for rectangle one of cross rooms
+  -- @tparam[opt={3,7}] table options.roomHeight Room height for rectangle one of cross rooms
+  -- @tparam[opt={3,12}] table options.crossWidth Room width for rectangle two of cross rooms
+  -- @tparam[opt={2,5}] table options.crossHeight Room height for rectangle two of cross rooms
+  -- @tparam[opt={3,12}] table options.corridorWidth Length of east-west corridors
+  -- @tparam[opt={2,5}] table options.corridorHeight Length of north-south corridors
+-- @tparam userdata rng Userdata with a .random(self, min, max) function
+function ROT.Map.Brogue:__init(width, height, options, rng)
+    ROT.Map.Brogue.super.__init(self, width, height)
+    self._options={
+                    roomWidth={4,20},
+                    roomHeight={3,7},
+                    crossWidth={3,12},
+                    crossHeight={2,5},
+                    corridorWidth={2,12},
+                    corridorHeight={2,5},
+                    caveChance=.33,
+                    corridorChance=.8
+                  }
+
+    if options then
+        for k,v in pairs(options) do self._options[k]=v end
+    end
+
+    self._walls={}
+    self._rooms={}
+    self._doors={}
+    self._loops=30
+    self._loopAttempts=300
+    self._maxrooms=99
+    self._roomAttempts=600
+    self._dirs=ROT.DIRS.FOUR
+    self._rng=rng and rng or ROT.RNG.Twister:new()
+    if not rng then self._rng:randomseed() end
+end
+
+--- Create.
+-- Creates a map.
+-- @tparam function callback This function will be called for every cell. It must accept the following parameters:
+  -- @tparam int callback.x The x-position of a cell in the map
+  -- @tparam int callback.y The y-position of a cell in the map
+  -- @tparam int callback.value A value representing the cell-type. 0==floor, 1==wall
+-- @tparam boolean firstFloorBehavior If true will put an upside T (9x10v and 20x4h) at the bottom center of the map.
+-- @treturn ROT.Map.Brogue self
+function ROT.Map.Brogue:create(callback, firstFloorBehavior)
+    self._map=self:_fillMap(1)
+    self._rooms={}
+    self._doors={}
+    self._walls={}
+
+    self:_buildFirstRoom(firstFloorBehavior)
+    self:_generateRooms()
+    self:_generateLoops()
+    self:_closeDiagonalOpenings()
+    if callback then
+        for x=1,self._width do
+            for y=1,self._height do
+                callback(x,y,self._map[x][y])
+            end
+        end
+    end
+    local d=self._doors
+    for i=1,#d do
+        callback(d[i][1], d[i][2], 2)
+    end
+    return self
+end
+
+function ROT.Map.Brogue:_buildFirstRoom(firstFloorBehavior)
+    while true do
+        if firstFloorBehavior then
+            local room=ROT.Map.BrogueRoom:createEntranceRoom(self._width, self._height)
+            if room:isValid(self, self._isWallCallback, self._canBeDugCallback) then
+                table.insert(self._rooms, room)
+                room:create(self, self._digCallback)
+                self:_insertWalls(room._walls)
+                return room
+            end
+        elseif self._rng:random()<self._options.caveChance then
+            return self:_buildCave()
+        else
+            local room=ROT.Map.BrogueRoom:createRandom(self._width, self._height, self._options, self._rng)
+            if room:isValid(self, self._isWallCallback, self._canBeDugCallback) then
+                table.insert(self._rooms, room)
+                room:create(self, self._digCallback)
+                self:_insertWalls(room._walls)
+                return room
+            end
+        end
+    end
+end
+
+function ROT.Map.Brogue:_buildCave()
+    local cl=ROT.Map.Cellular:new(self._width, self._height, nil, self._rng)
+    cl:randomize(.55)
+    for _=1,5 do cl:create() end
+    local map=cl._map
+    local id=2
+    local largest=2
+    local bestBlob={0,{}}
+
+    for x=1,self._width do
+        for y=1,self._height do
+            if map[x][y]==1 then
+                local blobData=self:_fillBlob(x,y,map, id)
+                if blobData[1]>bestBlob[1] then
+                    largest=id
+                    bestBlob=blobData
+                end
+                id=id+1
+            end
+        end
+    end
+
+    for i=1,#bestBlob[2] do table.insert(self._walls, bestBlob[2][i]) end
+
+    for x=2,self._width-1 do
+        for y=2,self._height-1 do
+            if map[x][y]==largest then
+                self._map[x][y]=0
+            else
+                self._map[x][y]=1
+            end
+        end
+    end
+end
+
+function ROT.Map.Brogue:_fillBlob(x,y,map, id)
+    map[x][y]=id
+    local todo={{x,y}}
+    local dirs=ROT.DIRS.EIGHT
+    local size=1
+    local walls={}
+    repeat
+        local pos=table.remove(todo, 1)
+        for i=1,#dirs do
+            local rx=pos[1]+dirs[i][1]
+            local ry=pos[2]+dirs[i][2]
+            if rx<1 or rx>self._width or ry<1 or ry>self._height then
+
+            elseif map[rx][ry]==1 then
+                map[rx][ry]=id
+                table.insert(todo,{ rx, ry })
+                size=size+1
+            elseif map[rx][ry]==0 then
+                table.insert(walls, {rx,ry})
+            end
+        end
+    until #todo==0
+    return {size, walls}
+end
+
+function ROT.Map.Brogue:_generateRooms()
+    local rooms=0
+    for i=1,1000 do
+        if rooms>self._maxrooms then break end
+        if self:_buildRoom(i>375) then
+            rooms=rooms+1
+        end
+    end
+end
+
+function ROT.Map.Brogue:_buildRoom(forceNoCorridor)
+    --local p=table.remove(self._walls,self._rng:random(1,#self._walls))
+    local p=self._walls[self._rng:random(1,#self._walls)]
+    if not p then return false end
+    local d=self:_getDiggingDirection(p[1], p[2])
+    if d then
+        if self._rng:random()<self._options.corridorChance and not forceNoCorridor then
+            local cd
+            if d[1]~=0 then cd=self._options.corridorWidth
+            else cd=self._options.corridorHeight
+            end
+            local corridor=ROT.Map.Corridor:createRandomAt(p[1]+d[1],p[2]+d[2],d[1],d[2],{corridorLength=cd}, self._rng)
+            if corridor:isValid(self, self._isWallCallback, self._canBeDugCallback) then
+                local dx=corridor._endX
+                local dy=corridor._endY
+
+                local room=ROT.Map.BrogueRoom:createRandomAt(dx, dy ,d[1],d[2], self._options, self._rng)
+
+                if room:isValid(self, self._isWallCallback, self._canBeDugCallback) then
+                    corridor:create(self, self._digCallback)
+                    room:create(self, self._digCallback)
+                    self:_insertWalls(room._walls)
+                    self._map[p[1]][p[2]]=0
+                    self._map[dx][dy]=0
+                    return true
+                end
+            end
+        else
+            local room=ROT.Map.BrogueRoom:createRandomAt(p[1],p[2],d[1],d[2], self._options, self._rng)
+            if room:isValid(self, self._isWallCallback, self._canBeDugCallback) then
+                room:create(self, self._digCallback)
+                self._map[p[1]][p[2]]=0
+                self:_insertWalls(room._walls)
+                table.insert(self._doors, room._doors[1])
+                return true
+            end
+        end
+    end
+    return false
+end
+
+function ROT.Map.Brogue:_getDiggingDirection(cx, cy)
+    local deltas=ROT.DIRS.FOUR
+    local result=nil
+
+    for i=1,#deltas do
+        local delta=deltas[i]
+        local x    =cx+delta[1]
+        local y    =cy+delta[2]
+        if x<1 or y<1 or x>self._width or y>self._height then return nil end
+        if self._map[x][y]==0 then
+            if result and #result>0 then return nil end
+            result=delta
+        end
+    end
+    if not result or #result<1 then return nil end
+
+    return {-result[1], -result[2]}
+end
+
+function ROT.Map.Brogue:_insertWalls(wt)
+    for _,v in pairs(wt) do
+        table.insert(self._walls, v)
+    end
+end
+
+function ROT.Map.Brogue:_generateLoops()
+    local dirs=ROT.DIRS.FOUR
+    local count=0
+    local wd=self._width
+    local hi=self._height
+    local m=self._map
+    local function cb()
+        count=count+1
+    end
+    local function pass(x,y)
+        return m[x][y]==0
+    end
+    for _=1,300 do
+        if #self._walls<1 then return end
+        local w=table.remove(self._walls, 1)--self._rng:random(1,#self._walls))
+        for j=1,2 do
+            local x=w[1] +dirs[j][1]
+            local y=w[2] +dirs[j][2]
+            local x2=w[1]+dirs[j+2][1]
+            local y2=w[2]+dirs[j+2][2]
+            if x>1 and x2>1 and y>1 and y2>1 and
+                x<wd and x2<wd and y<hi and y2<hi and
+                m[x][y]==0 and m[x2][y2]==0
+            then
+                local path=ROT.Path.AStar(x,y,pass)
+                path:compute(x2, y2, cb)
+                if count>30 then
+                    m[w[1]][w[2]]=0
+                end
+                count=0
+            end
+        end
+    end
+end
+
+function ROT.Map.Brogue:_closeDiagonalOpenings()
+end
+
+function ROT.Map.Brogue:_getDoors() return self._doors end
+
+function ROT.Map.Brogue:_digCallback(x, y, value)
+    self._map[x][y]=value
+end
+
+function ROT.Map.Brogue:_isWallCallback(x, y)
+    if x<1 or y<1 or x>self._width or y>self._height then return false end
+    return self._map[x][y]==1
+end
+
+function ROT.Map.Brogue:_canBeDugCallback(x, y)
+    if x<2 or y<2 or x>=self._width or y>=self._height then
+        return false
+    end
+    local drs=ROT.DIRS.FOUR
+    for i=1,#drs do
+        if self._map[x+drs[i][1]][y+drs[i][2]]==0 then return false end
+    end
+    return true
+end
+
+ROT.Noise=class{ }
 
 function ROT.Noise:__init()
     self.__name='Noise'
 end
 
-function ROT.Noise:get(x, y) end
+function ROT.Noise:get() end
 
 --- Simplex Noise Generator.
 -- Based on a simple 2d implementation of simplex noise by Ondrej Zara
@@ -3207,7 +4015,7 @@ function ROT.Noise:get(x, y) end
 -- With Optimisations by Peter Eastman (peastman@drizzle.stanford.edu).
 -- Better rank ordering method by Stefan Gustavson in 2012.
 -- @module ROT.Noise.Simplex
-ROT.Noise.Simplex=ROT.Noise:extends{ __name, _F2, _G2, _gradients, _perms, _indexes }
+ROT.Noise.Simplex=ROT.Noise:extends{ }
 
 --- Constructor.
 -- 2D simplex noise generator.
@@ -3310,7 +4118,7 @@ function ROT.Noise.Simplex:get(xin, yin)
     return 70*(n0+n1+n2)
 end
 
-ROT.FOV=class{ __name, _lightPasses, _options }
+ROT.FOV=class{ }
 
 function ROT.FOV:__init(lightPassesCallback, options)
     self.__name='FOV'
@@ -3319,7 +4127,7 @@ function ROT.FOV:__init(lightPassesCallback, options)
     if options then for k,_ in pairs(options) do self._options[k]=options[k] end end
 end
 
-function ROT.FOV:compute(x, y, R, callback) end
+function ROT.FOV:compute() end
 
 function ROT.FOV:_getCircle(cx, cy, r)
     local result={}
@@ -3344,7 +4152,7 @@ function ROT.FOV:_getCircle(cx, cy, r)
     local y=cy+startOffset[2]*r
 
     for i=1,#dirs do
-        for j=1,r*countFactor do
+        for _=1,r*countFactor do
             table.insert(result, {x, y})
             x=x+dirs[i][1]
             y=y+dirs[i][2]
@@ -3358,8 +4166,8 @@ function ROT.FOV:_getRealCircle(cx, cy, r)
     local result={}
     while i<2*math.pi do
         i=i+0.05
-        x = cx + r * math.cos(i)
-        y = cy + r * math.sin(i)
+        local x = cx + r * math.cos(i)
+        local y = cy + r * math.sin(i)
         table.insert(result, {x,y})
     end
     return result
@@ -3369,7 +4177,7 @@ end
 -- The Precise shadow casting algorithm developed by Ondřej Žára for rot.js.
 -- See http://roguebasin.roguelikedevelopment.org/index.php?title=Precise_Shadowcasting_in_JavaScript
 -- @module ROT.FOV.Precise
-ROT.FOV.Precise=ROT.FOV:extends{ __name, _lightPasses, _options }
+ROT.FOV.Precise=ROT.FOV:extends{ }
 
 --- Constructor.
 -- Called with ROT.FOV.Precise:new()
@@ -3394,7 +4202,7 @@ function ROT.FOV.Precise:compute(x, y, R, callback)
     callback(x, y, 0, 1)
     local SHADOWS={}
 
-    local cx, cy, blocks, A1, A2, visibility
+    local blocks, A1, A2, visibility
 
     for r=1,R do
         local neighbors=self:_getCircle(x, y, r)
@@ -3403,7 +4211,7 @@ function ROT.FOV.Precise:compute(x, y, R, callback)
         for i=0,neighborCount-1 do
             local cx=neighbors[i+1][1]
             local cy=neighbors[i+1][2]
-            A1={i>1 and 2*i-1 or 2*neighborCount-1, 2*neighborCount}
+            A1={i>0 and 2*i-1 or 2*neighborCount-1, 2*neighborCount}
             A2={2*i+1, 2*neighborCount}
 
             blocks    =not self:_lightPasses(cx, cy)
@@ -3490,7 +4298,7 @@ end
 
 function splice(t, i, rn, it) -- table, index, numberToRemove, insertTable
     if rn>0 then
-        for j=1,rn do
+        for _=1,rn do
             table.remove(t, i)
         end
     end
@@ -3502,7 +4310,136 @@ function splice(t, i, rn, it) -- table, index, numberToRemove, insertTable
     end
 end
 
-ROT.Line=class{ x1, y1, x2, y2, points }
+--- Recursive Shadowcasting Field of View calculator.
+-- The Recursive shadow casting algorithm developed by Ondřej Žára for rot.js.
+-- See http://roguebasin.roguelikedevelopment.org/index.php?title=Recursive_Shadowcasting_in_JavaScript
+-- @module ROT.FOV.Recursive
+ROT.FOV.Recursive=ROT.FOV:extends{ }
+ROT.FOV.Recursive.__name='Recursive'
+--- Constructor.
+-- Called with ROT.FOV.Recursive:new()
+-- @tparam function lightPassesCallback A function with two parameters (x, y) that returns true if a map cell will allow light to pass through
+-- @tparam table options Options
+  -- @tparam int options.topology Direction for light movement Accepted values: (4 or 8)
+function ROT.FOV.Recursive:__init(lightPassesCallback, options)
+    ROT.FOV.Recursive.super.__init(self, lightPassesCallback, options)
+end
+
+ ROT.FOV.Recursive._octants = {
+    {-1,  0,  0,  1},
+    { 0, -1,  1,  0},
+    { 0, -1, -1,  0},
+    {-1,  0,  0, -1},
+    { 1,  0,  0, -1},
+    { 0,  1, -1,  0},
+    { 0,  1,  1,  0},
+    { 1,  0,  0,  1}
+}
+
+--- Compute.
+-- Get visibility from a given point
+-- @tparam int x x-position of center of FOV
+-- @tparam int y y-position of center of FOV
+-- @tparam int R radius of FOV (i.e.: At most, I can see for R cells)
+-- @tparam function callback A function that is called for every cell in view. Must accept four parameters.
+  -- @tparam int callback.x x-position of cell that is in view
+  -- @tparam int callback.y y-position of cell that is in view
+  -- @tparam int callback.r The cell's distance from center of FOV
+  -- @tparam boolean callback.visibility Indicates if the cell is seen
+function ROT.FOV.Recursive:compute(x, y, R, callback)
+    callback(x, y, 0, true)
+    for i=1,#self._octants do
+        self:_renderOctant(x,y,self._octants[i], R, callback)
+    end
+end
+
+--- Compute 180.
+-- Get visibility from a given point for a 180 degree arc
+-- @tparam int x x-position of center of FOV
+-- @tparam int y y-position of center of FOV
+-- @tparam int R radius of FOV (i.e.: At most, I can see for R cells)
+-- @tparam int dir viewing direction (use ROT.DIR index for values)
+-- @tparam function callback A function that is called for every cell in view. Must accept four parameters.
+  -- @tparam int callback.x x-position of cell that is in view
+  -- @tparam int callback.y y-position of cell that is in view
+  -- @tparam int callback.r The cell's distance from center of FOV
+  -- @tparam boolean callback.visibility Indicates if the cell is seen
+function ROT.FOV.Recursive:compute180(x, y, R, dir, callback)
+    callback(x, y, 0, true)
+    local cur = dir - 1
+    local prev=(cur-1+8)%8 + 1
+    local nPre=(cur-2+8)%8 + 1
+    local next=(cur+ 9 )%8 + 1
+
+    self:_renderOctant(x, y, self._octants[nPre], R, callback)
+    self:_renderOctant(x, y, self._octants[prev], R, callback)
+    self:_renderOctant(x, y, self._octants[dir ], R, callback)
+    self:_renderOctant(x, y, self._octants[next], R, callback)
+end
+--- Compute 90.
+-- Get visibility from a given point for a 90 degree arc
+-- @tparam int x x-position of center of FOV
+-- @tparam int y y-position of center of FOV
+-- @tparam int R radius of FOV (i.e.: At most, I can see for R cells)
+-- @tparam int dir viewing direction (use ROT.DIR index for values)
+-- @tparam function callback A function that is called for every cell in view. Must accept four parameters.
+  -- @tparam int callback.x x-position of cell that is in view
+  -- @tparam int callback.y y-position of cell that is in view
+  -- @tparam int callback.r The cell's distance from center of FOV
+  -- @tparam boolean callback.visibility Indicates if the cell is seen
+function ROT.FOV.Recursive:compute90(x, y, R, dir, callback)
+    callback(x, y, 0, true)
+    local cur = dir - 1
+    local prev=(cur-1+8)%8 + 1
+
+    self:_renderOctant(x, y, self._octants[dir ], R, callback)
+    self:_renderOctant(x, y, self._octants[prev], R, callback)
+end
+
+function ROT.FOV.Recursive:_renderOctant(x, y, octant, R, callback)
+    self:_castVisibility(x, y, 1, 1.0, 0.0, R + 1, octant[1], octant[2], octant[3], octant[4], callback)
+end
+
+function ROT.FOV.Recursive:_castVisibility(startX, startY, row, visSlopeStart, visSlopeEnd, radius, xx, xy, yx, yy, callback)
+    if visSlopeStart<visSlopeEnd then return end
+    for i=row,radius do
+        local dx=-i-1
+        local dy=-i
+        local blocked=false
+        local newStart=0
+
+        while dx<=0 do
+            dx=dx+1
+            local slopeStart=(dx-0.5)/(dy+0.5)
+            local slopeEnd=(dx+0.5)/(dy-0.5)
+
+            if slopeEnd<=visSlopeStart then
+                if slopeStart<visSlopeEnd then break end
+                local mapX=startX+dx*xx+dy*xy
+                local mapY=startY+dx*yx+dy*yy
+
+                if dx*dx+dy*dy<radius*radius then
+                    callback(mapX, mapY, i, true)
+                end
+                if not blocked then
+                    if not self:_lightPasses(mapX, mapY) and i<radius then
+                        blocked=true
+                        self:_castVisibility(startX, startY, i+1, visSlopeStart, slopeStart, radius, xx, xy, yx, yy, callback)
+                        newStart=slopeEnd
+                    end
+                elseif not self:_lightPasses(mapX, mapY) then
+                    newStart=slopeEnd
+                else
+                    blocked=false
+                    visSlopeStart=newStart
+                end
+            end
+        end
+        if blocked then break end
+    end
+end
+
+ROT.Line=class{ }
 function ROT.Line:__init(x1, y1, x2, y2)
     self.x1=x1
     self.y1=y1
@@ -3533,7 +4470,7 @@ function ROT.Line:getPoints()
     return self
 end
 
-ROT.Point=class { x, y }
+ROT.Point=class { }
 function ROT.Point:__init(x, y)
     self.x=x
     self.y=y
@@ -3550,7 +4487,7 @@ end
 function ROT.Point:equals(other)
     if self==other                  then return true  end
     if other==nil                   or
-    not other.is_a(Point)           or
+    not other.is_a(ROT.Point)       or
     (other.x and other.x ~= self.x) or
     (other.y and other.y ~= self.y) then return false end
     return true
@@ -3560,7 +4497,7 @@ function ROT.Point:adjacentPoints()
     local points={}
     local i     =1
     for ox=-1,1 do for oy=-1,1 do
-        points[i]=Point(self.x+ox,self.y+oy)
+        points[i]=ROT.Point(self.x+ox,self.y+oy)
         i=i+1
     end end
     return points
@@ -3570,7 +4507,7 @@ end
 -- See http://en.wikipedia.org/wiki/Bresenham's_line_algorithm.
 -- Included for sake of having options. Provides three functions for computing FOV
 -- @module ROT.FOV.Bresenham
-ROT.FOV.Bresenham=ROT.FOV:extends { __name, _lightPasses, _options }
+ROT.FOV.Bresenham=ROT.FOV:extends { }
 
 --- Constructor.
 -- Called with ROT.FOV.Bresenham:new()
@@ -3685,7 +4622,7 @@ end
   -- @tparam int callback.r The cell's distance from center of FOV
   -- @tparam number callback.visibility The cell's visibility rating (from 0-1). How well can you see this cell?
 function ROT.FOV.Bresenham:computeQuick(cx, cy, r, callback)
-    visited={}
+    local visited={}
     callback(cx,cy,1, 1)
     visited[ROT.Point(cx, cy):hashCode()]=0
 
@@ -3722,11 +4659,11 @@ end
 -- objects intended to represent a color as a
 -- table of the following schema:
 -- @module ROT.Color
-ROT.Color=class { _cache, _rng }
+ROT.Color=class { }
 
-function ROT.Color:__init()
-    self._rng = ROT.RNG.Twister:new()
-    self._rng:randomseed()
+function ROT.Color:__init(rng)
+    self._rng = rng and rng or ROT.RNG.Twister:new()
+    if not rng then self._rng:randomseed() end
     self._cached={
             black= {r=0,g=0,b=0,a=255},
             navy= {r=0,g=0,b=128,a=255},
@@ -3883,7 +4820,6 @@ end
 -- @tparam string str Accepted formats 'rgb(0..255, 0..255, 0..255)', '#5fe', '#5FE', '#254eff', 'goldenrod'
 function ROT.Color:fromString(str)
     local cached={r=0,g=0,b=0,a=255}
-    local r
     if self._cached[str] then cached = self._cached[str]
     else
         local values={}
@@ -4053,9 +4989,9 @@ end
 
 -- Convert rgb color to hsl
 function ROT.Color:rgb2hsl(color)
-    r=color.r/255
-    g=color.g/255
-    b=color.b/255
+    local r=color.r/255
+    local g=color.g/255
+    local b=color.b/255
     local max=math.max(r, g, b)
     local min=math.min(r, g, b)
     local h,s,l=0,0,(max+min)/2
@@ -4072,7 +5008,7 @@ function ROT.Color:rgb2hsl(color)
         end
             h=h/6
     end
-    result={}
+    local result={}
     result.h=h
     result.s=s
     result.l=l
@@ -4227,7 +5163,6 @@ function ROT.Lighting:compute(lightingCallback)
     end
 
     return self
-
 end
 
 function ROT.Lighting:_emitLight(emittingCells, litCells, doneCells)
@@ -4285,7 +5220,6 @@ function ROT.Lighting:_emitLightFromCell(x, y, color, litCells)
     if self._fovCache[key] then fov=self._fovCache[key]
     else fov=self:_updateFOV(x, y)
     end
-    local result
     local formFactor
     for k,_ in pairs(fov) do
         formFactor=fov[k]
@@ -4317,7 +5251,7 @@ function ROT.Lighting:_updateFOV(x, y)
     return cache
 end
 
-ROT.Path=class { _toX, _toY, _fromX, _fromY, _passableCallback, _options, _dirs}
+ROT.Path=class { }
 
 function ROT.Path:__init(toX, toY, passableCallback, options)
     self._toX  =toX
@@ -4330,9 +5264,19 @@ function ROT.Path:__init(toX, toY, passableCallback, options)
     if options then for k,_ in pairs(options) do self._options[k]=options[k] end end
 
     self._dirs= self._options.topology==8 and ROT.DIRS.EIGHT or ROT.DIRS.FOUR
+    if self._options.topology==8 then
+    self._dirs ={self._dirs[1],
+                 self._dirs[3],
+                 self._dirs[5],
+                 self._dirs[7],
+                 self._dirs[2],
+                 self._dirs[4],
+                 self._dirs[6],
+                 self._dirs[8] }
+    end
 end
 
-function ROT.Path:compute(fromX, fromY, callback) end
+function ROT.Path:compute() end
 
 function ROT.Path:_getNeighbors(cx, cy)
     local result={}
@@ -4350,22 +5294,23 @@ end
 --- Dijkstra Pathfinding.
 -- Simplified Dijkstra's algorithm: all edges have a value of 1
 -- @module ROT.Path.Dijkstra
-ROT.Path.Dijkstra=ROT.Path:extends { _toX, _toY, _fromX, _fromY, _computed, _todo, _passableCallback, _options, _dirs}
-
+ROT.Path.Dijkstra=ROT.Path:extends { }
+ROT.Path.Dijkstra.__name='Dijkstra'
 --- Constructor.
 -- @tparam int toX x-position of destination cell
 -- @tparam int toY y-position of destination cell
 -- @tparam function passableCallback Function with two parameters (x, y) that returns true if the cell at x,y is able to be crossed
 -- @tparam table options Options
   -- @tparam[opt=8] int options.topology Directions for movement Accepted values (4 or 8)
-function ROT.Path.Dijkstra:__init(toX, toY, passableCallback, options)
+function ROT.Path.Dijkstra:__init(toX, toY, passableCallback, options)ROT.Path.
     ROT.Path.Dijkstra.super.__init(self, toX, toY, passableCallback, options)
 
     self._computed={}
     self._todo    ={}
 
     local obj = {x=toX, y=toY, prev=nil}
-    self._computed[toX..','..toY] = obj
+    self._computed[toX]={}
+    self._computed[toX][toY] = obj
     table.insert(self._todo, obj)
 end
 
@@ -4374,12 +5319,14 @@ end
 -- @tparam int fromY y-position of starting point
 -- @tparam function callback Will be called for every path item with arguments "x" and "y"
 function ROT.Path.Dijkstra:compute(fromX, fromY, callback)
-    local key=fromX..','..fromY
+    self._fromX=tonumber(fromX)
+    self._fromY=tonumber(fromY)
 
-    if not self._computed[key] then self:_compute(fromX, fromY) end
-    if not self._computed[key] then return end
+    if not self._computed[self._fromX] then self._computed[self._fromX]={} end
+    if not self._computed[self._fromX][self._fromY] then self:_compute(self._fromX, self._fromY) end
+    if not self._computed[self._fromX][self._fromY] then return end
 
-    local item=self._computed[key]
+    local item=self._computed[self._fromX][self._fromY]
     while item do
         callback(tonumber(item.x), tonumber(item.y))
         item=item.prev
@@ -4394,11 +5341,10 @@ function ROT.Path.Dijkstra:_compute(fromX, fromY)
         local neighbors=self:_getNeighbors(item.x, item.y)
 
         for i=1,#neighbors do
-            local neighbor=neighbors[i]
-            local x=neighbor[1]
-            local y=neighbor[2]
-            local id=x..','..y
-            if not self._computed[id] then
+            local x=neighbors[i][1]
+            local y=neighbors[i][2]
+            if not self._computed[x] then self._computed[x]={} end
+            if not self._computed[x][y] then
                 self:_add(x, y, item)
             end
         end
@@ -4411,7 +5357,7 @@ function ROT.Path.Dijkstra:_add(x, y, prev)
     obj.y   =y
     obj.prev=prev
 
-    self._computed[x..','..y]=obj
+    self._computed[x][y]=obj
     table.insert(self._todo, obj)
 end
 
@@ -4428,13 +5374,24 @@ ROT.DijkstraMap=class {  }
 -- @tparam function passableCallback a function with two parameters (x, y) that returns true if a map cell is passable
 function ROT.DijkstraMap:__init(goalX, goalY, mapWidth, mapHeight, passableCallback)
     self._map={}
-    self._goal={}
-    self._goal.x=goalX
-    self._goal.y=goalY
+    self._goals={}
+    table.insert(self._goals, {x=goalX, y=goalY})
 
     self._dimensions={}
     self._dimensions.w=mapWidth
     self._dimensions.h=mapHeight
+
+    self._dirs={}
+    local d=ROT.DIRS.EIGHT
+    self._dirs ={d[1],
+                 d[3],
+                 d[5],
+                 d[7],
+                 d[2],
+                 d[4],
+                 d[6],
+                 d[8] }
+
 
     self._passableCallback=passableCallback
 end
@@ -4442,16 +5399,25 @@ end
 --- Establish values for all cells in map.
 -- call after ROT.DijkstraMap:new(goalX, goalY, mapWidth, mapHeight, passableCallback)
 function ROT.DijkstraMap:compute()
+    if #self._goals<1 then return
+    elseif #self._goals==1 then return self:_singleGoalCompute()
+    else return self:_manyGoalCompute() end
+end
+
+function ROT.DijkstraMap:_manyGoalCompute()
     local stillUpdating={}
     for i=1,self._dimensions.w do
-        if not self._map[i] then self._map[i]={} end
+        self._map[i]={}
         stillUpdating[i]={}
         for j=1,self._dimensions.h do
             stillUpdating[i][j]=true
-            self._map[i][j]=1000
+            self._map[i][j]=math.huge
         end
     end
-    self._map[self._goal.x][self._goal.y]=0
+
+    for _,v in pairs(self._goals) do
+        self._map[v.x][v.y]=0
+    end
 
     local passes=0
     while true do
@@ -4461,7 +5427,7 @@ function ROT.DijkstraMap:compute()
                 if self._passableCallback(i, j) then
                     local cellChanged=false
                     local low=math.huge
-                    for k,v in pairs(ROT.DIRS.EIGHT) do
+                    for _,v in pairs(self._dirs) do
                         local tx=(i+v[1])
                         local ty=(j+v[2])
                         if tx>0 and tx<=self._dimensions.w and ty>0 and ty<=self._dimensions.h then
@@ -4486,6 +5452,60 @@ function ROT.DijkstraMap:compute()
     end
 end
 
+function ROT.DijkstraMap:_singleGoalCompute()
+    local g=self._goals[1]
+    for i=1,self._dimensions.w do
+        self._map[i]={}
+        for j=1,self._dimensions.h do
+            self._map[i][j]=math.huge
+        end
+    end
+
+    self._map[g.x][g.y]=0
+
+    local val=1
+    local wq={}
+    local pq={}
+    local ds=self._dirs
+
+    table.insert(wq, {g.x, g.y})
+
+    while true do
+        while #wq>0 do
+            local t=table.remove(wq,1)
+            for _,d in pairs(ds) do
+                local x=t[1]+d[1]
+                local y=t[2]+d[2]
+                if self._passableCallback(x,y) and self._map[x][y]>val then
+                    self._map[x][y]=val
+                    table.insert(pq,{x,y})
+                end
+            end
+        end
+        if #pq<1 then break end
+        val=val+1
+        while #pq>0 do table.insert(wq, table.remove(pq)) end
+    end
+end
+
+function ROT.DijkstraMap:addGoal(gx, gy)
+    table.insert(self._goals, {x=gx, y=gy})
+end
+
+function ROT.DijkstraMap:writeMapToConsole(returnString)
+    local ls
+    if returnString then ls='' end
+    for y=1,self._dimensions.h do
+        local s=''
+        for x=1,self._dimensions.w do
+            s=s..self._map[x][y]..','
+        end
+        write(s)
+        if returnString then ls=ls..s..'\n' end
+    end
+    if returnString then return ls end
+end
+
 --- Get Width of map.
 -- @treturn int w width of map
 function ROT.DijkstraMap:getWidth() return self._dimensions.w end
@@ -4504,27 +5524,10 @@ function ROT.DijkstraMap:getDimensions() return self._dimensions end
 -- @treturn table map A 2d array of map values, access like map[x][y]
 function ROT.DijkstraMap:getMap() return self._map end
 
---- Get the x-value of the goal cell.
--- @treturn int x x-value of goal cell
-function ROT.DijkstraMap:getGoalX() return self._goal.x end
-
---- Get the y-value of the goal cell.
--- @treturn int y y-value of goal cell
-function ROT.DijkstraMap:getGoalY() return self._goal.y end
-
 --- Get the goal cell as a table.
 -- @treturn table goal table containing goal position
   -- @treturn int goal.x x-value of goal cell
-function ROT.DijkstraMap:getGoal() return self._goal end
-
---- Set the goal position.
--- Use compute after to calculate a new map without creating a whole new object
--- @tparam int x the new x-value of the goal cell
--- @tparam int y the new y-value of the goal cell
-function ROT.DijkstraMap:setGoal(x, y)
-    self._goal.x=x
-    self._goal.y=y
-end
+function ROT.DijkstraMap:getGoals() return self._goals end
 
 --- Get the direction of the goal from a given position
 -- @tparam int x x-value of current position
@@ -4532,12 +5535,10 @@ end
 -- @treturn int xDir X-Direction towards goal. Either -1, 0, or 1
 -- @treturn int yDir Y-Direction towards goal. Either -1, 0, or 1
 function ROT.DijkstraMap:dirTowardsGoal(x, y)
-    local low=math.huge
-    local key=nil
-    local dir=nil
     local low=self._map[x][y]
     if low==0 then return nil end
-    for k,v in pairs(ROT.DIRS.EIGHT) do
+    local dir=nil
+    for _,v in pairs(self._dirs) do
         local tx=(x+v[1])
         local ty=(y+v[2])
         if tx>0 and tx<=self._dimensions.w and ty>0 and ty<=self._dimensions.h then
@@ -4548,24 +5549,15 @@ function ROT.DijkstraMap:dirTowardsGoal(x, y)
             end
         end
     end
-    return dir
-end
-
---- Run a callback function on every cell in the map
--- @tparam function callback A function with x and y parameters that will be run on every cell in the map
-function ROT.DijkstraMap:iterateThroughMap(callback)
-    for y=1,self._dimensions.h do
-        for x=1,self._dimensions.w do
-            callback(x,y)
-        end
-    end
+    if dir then return dir[1],dir[2] end
+    return nil
 end
 
 --- A* Pathfinding.
 -- Simplified A* algorithm: all edges have a value of 1
 -- @module ROT.Path.AStar
-ROT.Path.AStar=ROT.Path:extends { _toX, _toY, _fromX, _fromY, _done, _todo, _passableCallback, _options }
-
+ROT.Path.AStar=ROT.Path:extends { }
+ROT.Path.AStar.__name='AStar'
 --- Constructor.
 -- @tparam int toX x-position of destination cell
 -- @tparam int toY y-position of destination cell
@@ -4587,8 +5579,9 @@ end
 function ROT.Path.AStar:compute(fromX, fromY, callback)
     self._todo={}
     self._done={}
-    self._fromX=fromX
-    self._fromY=fromY
+    self._fromX=tonumber(fromX)
+    self._fromY=tonumber(fromY)
+    self._done[self._toX]={}
     self:_add(self._toX, self._toY, nil)
 
     while #self._todo>0 do
@@ -4597,17 +5590,16 @@ function ROT.Path.AStar:compute(fromX, fromY, callback)
         local neighbors=self:_getNeighbors(item.x, item.y)
 
         for i=1,#neighbors do
-            local neighbor=neighbors[i]
-            local x = neighbor[1]
-            local y = neighbor[2]
-            local id=x..','..y
-            if not self._done[id] then
+            local x = neighbors[i][1]
+            local y = neighbors[i][2]
+            if not self._done[x] then self._done[x]={} end
+            if not self._done[x][y] then
                 self:_add(x, y, item)
             end
         end
     end
 
-    local item=self._done[fromX..','..fromY]
+    local item=self._done[self._fromX] and self._done[self._fromX][self._fromY] or nil
     if not item then return end
 
     while item do
@@ -4623,7 +5615,7 @@ function ROT.Path.AStar:_add(x, y, prev)
     obj.prev=prev
     obj.g   =prev and prev.g+1 or 0
     obj.h   =self:_distance(x, y)
-    self._done[x..','..y]=obj
+    self._done[x][y]=obj
 
     local f=obj.g+obj.h
 
