@@ -20,6 +20,9 @@
 			-- [[ Disply ]]--
 			--require 'display'
 
+            -- [[ TextDisplay ]]--
+            --require 'textDisplay'
+
 			-- [[ Map Generators ]]--
 			--require 'arena'
 			--require 'dividedMaze'
@@ -41,7 +44,7 @@
 			--require 'bresenham'
 
             --[[ Path ]]--
-            require 'dijkstraMap'
+            --require 'dijkstraMap'
 
             --[[ Color ]]--
 			--require 'lighting'
