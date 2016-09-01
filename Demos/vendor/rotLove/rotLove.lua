@@ -793,9 +793,9 @@ ROT.TextDisplay=class { }
 -- @return nil
 function ROT.TextDisplay:__init(w, h, font, size, dfg, dbg, fullOrFlags, vsync, fsaa)
     self.graphics =love.graphics
-    self._font    =font and self.graphics.newFont(font) or self.graphics.newFont(size or 10)
-    self._fontSize=size and size or 10
-    self.graphics.setFont(self._font, self._fontSize)
+    self._fontSize=size or 10
+    self._font    =font and self.graphics.newFont(font, size) or self.graphics.newFont(self._fontSize)
+    self.graphics.setFont(self._font)
     self._charWidth    =self._font:getWidth(' ')
     self._charHeight   =self._font:getHeight()
     self._widthInChars =w and w or 80

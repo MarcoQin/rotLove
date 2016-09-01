@@ -9,7 +9,7 @@
 			--require 'action'
 
 			-- [[ Engine ]]--
-			--require 'engine'
+			require 'engine'
 
 			-- [[ String Generator ]]--
 		 	--require 'stringGen'

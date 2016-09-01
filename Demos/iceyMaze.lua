@@ -3,14 +3,14 @@ ROT=require 'vendor/rotLove/rotLove'
 function love.load()
 	-- Icey works better with odd width/height
 	f =ROT.Display:new(81,25)
-	im=ROT.Map.IceyMaze:new(f:getWidth(), f:getHeight(), 0)
+	im=ROT.Map.IceyMaze:new(f:getWidth(), f:getHeight())
 	im:create(calbak)
 end
 local update=false
 function love.update()
     if update then
         update=false
-        im=ROT.Map.IceyMaze:new(f:getWidth(), f:getHeight(), math.random(0,5))
+        im=ROT.Map.IceyMaze:new(f:getWidth(), f:getHeight())
 	    im:create(calbak)
     end
 end

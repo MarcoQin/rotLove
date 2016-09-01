@@ -1,6 +1,5 @@
 --[[ ActionScheduler ]]--
 ROT= require 'vendor/rotLove/rotLove'
-class= require 'vendor/rotLove/vendor/30log'
 
 function love.load()
 	s  =ROT.Scheduler.Action:new()

@@ -1,5 +1,5 @@
 --[[ Event Queue ]]--
-ROT= require 'vendor/rotLove/rotLove_min'
+ROT= require 'vendor/rotLove/rotLove'
 function love.load()
 	f=ROT.Display(80,24)
 	q=ROT.EventQueue()

@@ -13,7 +13,7 @@ function generateNoise()
     end
 end
 function love.load()
-    f  =ROT.Display(256, 100, .275)
+    f  =ROT.Display(256, 100)
     generateNoise()
 end
 update=false

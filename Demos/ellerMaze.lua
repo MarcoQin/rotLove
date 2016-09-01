@@ -1,6 +1,6 @@
 ROT=require 'vendor/rotLove/rotLove'
 function love.load()
-	f =ROT.Display(211, 75, .375)
+	f =ROT.Display(211, 75)
 	em=ROT.Map.EllerMaze:new(f:getWidth(), f:getHeight())
 	em:create(calbak)
 end

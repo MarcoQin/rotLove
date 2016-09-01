@@ -1,11 +1,7 @@
 --[[ Display, RNG ]]--
     ROT = require 'vendor/rotLove/rotLove'
     function love.load()
-        -- Display(widthInCharacters, heightInCharacters, font
-        --         defaultForegroundColor, defaultBackgroundColor,
-        --         useFullScreen, useVSync, numberOfMsaaSamples)
-        -- Defaults shown here
-        frame=ROT.TextDisplay(80, 24, nil, nil, {r=192,g=192,b=192,a=255}, {r=0,g=0,b=0,a=255}, {fullscreen=false, vsync=false, msaa=3})
+        frame=ROT.TextDisplay()
         rand = math.random(1,3)
         rng = rand == 1 and ROT.RNG.Twister:new() or
               rand == 2 and ROT.RNG.LCG:new() or

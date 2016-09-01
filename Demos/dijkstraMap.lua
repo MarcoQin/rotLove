@@ -8,7 +8,7 @@ table.insert(colors, clr:fromString('red'))
 table.insert(colors, clr:fromString('green'))
 table.insert(colors, clr:fromString('yellow'))
 function love.load()
-    f  =ROT.Display(149, 86, .575)
+    f  =ROT.Display(149, 86)
     dothething()
 end
 function love.keypressed()
@@ -21,8 +21,8 @@ function love.update(dt)
     if tsl>tbf then
         tsl=tsl-tbf
         for _,mover in pairs(movers) do
-            local dir=dijkMap:dirTowardsGoal(mover.x, mover.y)
-            if dir then
+            local dir={dijkMap:dirTowardsGoal(mover.x, mover.y)}
+            if dir[1] and dir[2] and mover.x and mover.y then
                 f:write(map[mover.x][mover.y], mover.x, mover.y, nil, clr:interpolate(mover.color, mover.oc))
                 mover.x=mover.x+dir[1]
                 mover.y=mover.y+dir[2]
