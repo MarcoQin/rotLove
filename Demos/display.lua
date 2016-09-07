@@ -1,11 +1,11 @@
 --[[ Display, RNG ]]--
 	ROT = require 'vendor/rotLove/rotLove'
 	function love.load()
-        -- Display(widthInCharacters, heightInCharacters,
+        -- Display(widthInCharacters, heightInCharacters, scale,
         --         defaultForegroundColor, defaultBackgroundColor,
         --         love.window.setMode flags)
         -- Defaults shown here
-		frame=ROT.Display(80, 24, {r=192,g=192,b=192,a=255}, {r=0,g=0,b=0,a=255}, {fullscreen=false, vsync=false, msaa=3})
+		frame=ROT.Display(80, 24, 1, {r=192,g=192,b=192,a=255}, {r=0,g=0,b=0,a=255}, {fullscreen=false, vsync=false, msaa=3})
         rand = math.random(1,3)
         rng = rand == 1 and ROT.RNG.Twister:new() or
               rand == 2 and ROT.RNG.LCG:new() or
