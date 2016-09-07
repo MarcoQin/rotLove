@@ -8,7 +8,12 @@ table.insert(colors, clr:fromString('red'))
 table.insert(colors, clr:fromString('green'))
 table.insert(colors, clr:fromString('yellow'))
 function love.load()
-    f  =ROT.Display(149, 86)
+    f  =ROT.Display()
+    maps={
+        "DividedMaze",
+        "IceyMaze",
+        "EllerMaze",
+    }
     dothething()
 end
 function love.keypressed()
@@ -17,8 +22,8 @@ end
 tsl=0
 tbf=1/30
 function love.update(dt)
-    tsl=tsl+dt
-    if tsl>tbf then
+    --tsl=tsl+dt
+    if true then --tsl>tbf then
         tsl=tsl-tbf
         for _,mover in pairs(movers) do
             local dir={dijkMap:dirTowardsGoal(mover.x, mover.y)}
@@ -35,9 +40,20 @@ function love.update(dt)
 end
 
 function dothething()
-    rog=ROT.Map.EllerMaze(f:getWidth(), f:getHeight())
+    mapType=maps[rng:random(1,#maps)]
+    rog= ROT.Map[mapType]:new(f:getWidth(), f:getHeight())
     map={}
     for i=1,f:getWidth() do map[i]={} end
+    if rog.randomize then
+        floorValue=1
+        rog:randomize(.5)
+        for i=1,5 do
+            rog:create(calbak)
+        end
+    else
+        floorValue=0
+        rog:create(calbak)
+    end
     --rog:randomize(.5)
     --while rog:create(calbak) do end
     rog:create(calbak)
@@ -75,7 +91,7 @@ end
 
 function love.draw() f:draw() end
 function calbak(x, y, val)
-    map[x][y]=val==1 and '#' or '.'
+    map[x][y]=val==floorValue and '.' or '#'
     f:write(map[x][y], x, y)
 end
 function dijkCalbak(x,y) return map[x][y]=='.' end
