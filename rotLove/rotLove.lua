@@ -2324,14 +2324,45 @@ function ROT.Map.Room:create(gen, digCallback)
     local right =self._x2+1
     local bottom=self._y2+1
     local value=0
+    local v = "floor"
+    local values = {"floor", "door", "north", "west", "east", "south", "left-top-corner", "right-top-corner", "left-down-corner", "right-down-corner"}
     for x=left,right do
         for y=top,bottom do
             if self._doors[x..','..y] then
                 value=2
+                v = "door"
             elseif x==left or x==right or y==top or y==bottom then
-                value=1
+                if x == left then
+                    value = 3
+                    v = "west"
+                elseif x == right then
+                    value = 4
+                    v = "east"
+                elseif y == top then
+                    value = 5
+                    v = "north"
+                elseif y == bottom then
+                    value = 6
+                    v = "south"
+                end
+
+                if x == left and y == top then
+                    v = "left-top-corner"
+                    value = 7
+                elseif x == left and y == bottom then
+                    v = "left-down-corner"
+                    value = 8
+                elseif x == right and y == top then
+                    v = "right-top-corner"
+                    value = 9
+                elseif x == right and y == bottom then
+                    v = "right-down-corner"
+                    value = 10
+                end
+
             else
                 value=0
+                v = "floor"
             end
             digCallback(gen, x, y, value)
         end
